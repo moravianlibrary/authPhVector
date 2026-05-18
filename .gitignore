@@ -1,0 +1,23 @@
+# deps
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# env
+.env.local
+.env*.local
+
+# data (velký soubor)
+aut_ph.xml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+scripts/__pycache__/
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
