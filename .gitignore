@@ -10,7 +10,7 @@ out/
 .env*.local
 
 # data (velký soubor)
-aut_ph.xml
+aut_*.xml
 
 # Python
 __pycache__/
@@ -22,3 +22,7 @@ scripts/__pycache__/
 tsconfig.tsbuildinfo
 
 .vercel
+
+# PhpStorm
+.idea
+
