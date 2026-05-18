@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 const PINECONE_INDEX_HOST = process.env.PINECONE_INDEX_HOST!;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY!;
 const HF_API_TOKEN = process.env.HF_TOKEN!;
+// Nový HF Inference Router endpoint (2025)
 const HF_MODEL_URL =
-  "https://api-inference.huggingface.co/models/intfloat/multilingual-e5-small";
+  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-small/pipeline/feature-extraction";
 
 export interface SearchResult {
   recordId: string;
@@ -25,20 +26,42 @@ async function embedQuery(query: string): Promise<number[]> {
     body: JSON.stringify({ inputs: `query: ${query}` }),
   });
 
+  // Číst jako text nejdříve — HF může vrátit HTML při auth chybách
+  const text = await res.text();
+
   if (res.status === 503) {
-    const json = await res.json();
-    const estimatedTime: number = json.estimated_time ?? 20;
+    let estimatedTime = 20;
+    try {
+      const json = JSON.parse(text);
+      estimatedTime = json.estimated_time ?? 20;
+    } catch {}
     throw Object.assign(new Error("model_loading"), { estimatedTime });
   }
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`HuggingFace API error ${res.status}: ${text}`);
+    throw Object.assign(new Error(`hf_error`), {
+      detail: `HuggingFace ${res.status}: ${text.slice(0, 300)}`,
+    });
   }
 
-  const data = await res.json();
-  // HF Inference vrací [[...384 čísel...]] pro sentence-transformers
-  return Array.isArray(data[0]) ? (data[0] as number[]) : (data as number[]);
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw Object.assign(new Error(`hf_error`), {
+      detail: `HuggingFace vrátil neplatný JSON: ${text.slice(0, 200)}`,
+    });
+  }
+
+  // HF Inference vrací [[...384 čísel...]] nebo [...384 čísel...]
+  if (Array.isArray(data)) {
+    return Array.isArray((data as unknown[])[0])
+      ? ((data as number[][])[0])
+      : (data as number[]);
+  }
+  throw Object.assign(new Error(`hf_error`), {
+    detail: `Neočekávaný formát odpovědi: ${JSON.stringify(data).slice(0, 200)}`,
+  });
 }
 
 async function queryPinecone(
@@ -112,6 +135,10 @@ export async function POST(req: NextRequest) {
       );
     }
     console.error("[/api/search]", e);
-    return NextResponse.json({ error: "Vyhledávání selhalo" }, { status: 500 });
+    const detail = (e as Error & { detail?: string }).detail;
+    return NextResponse.json(
+      { error: detail ?? "Vyhledávání selhalo" },
+      { status: 500 }
+    );
   }
 }

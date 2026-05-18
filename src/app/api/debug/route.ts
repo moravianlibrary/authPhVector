@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const HF_MODEL_URL =
-  "https://api-inference.huggingface.co/models/intfloat/multilingual-e5-small";
+  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-small/pipeline/feature-extraction";
 
 export async function GET() {
   const results: Record<string, unknown> = {};
@@ -26,14 +26,16 @@ export async function GET() {
       },
       body: JSON.stringify({ inputs: "query: test" }),
     });
-    const hfBody = await hfRes.json();
+    const hfText = await hfRes.text();
+    let hfBody: unknown;
+    try { hfBody = JSON.parse(hfText); } catch { hfBody = hfText.slice(0, 300); }
     results.hf = {
       status: hfRes.status,
       ok: hfRes.ok,
       responseType: Array.isArray(hfBody)
-        ? Array.isArray(hfBody[0])
-          ? `nested array [${hfBody.length}][${(hfBody[0] as number[]).length}]`
-          : `flat array [${hfBody.length}]`
+        ? Array.isArray((hfBody as unknown[])[0])
+          ? `nested array [${(hfBody as unknown[]).length}][${((hfBody as number[][])[0]).length}]`
+          : `flat array [${(hfBody as unknown[]).length}]`
         : typeof hfBody,
       error: hfRes.ok ? null : hfBody,
     };
