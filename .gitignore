@@ -21,3 +21,4 @@ scripts/__pycache__/
 # Build artifacts
 tsconfig.tsbuildinfo
 
+.vercel
