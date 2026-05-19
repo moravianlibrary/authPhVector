@@ -69,7 +69,7 @@ def fetch_text(url: str, session: requests.Session) -> str | None:
         for tag in soup(["script", "style", "sup", "table"]):
             tag.decompose()
 
-        content = soup.find("div", class_="mw-content-text")
+        content = soup.find("div", id="mw-content-text")
         if not content:
             return None
 
