@@ -41,6 +41,8 @@ INDEX_NAME = "authph"
 RECORDS_PER_BATCH = 200
 ENCODE_BATCH_SIZE = 64
 E5_PASSAGE = "passage: "
+WIKI_DIR = DATA_DIR / "data" / "wiki"
+WIKI_MAX_CHARS = 1000
 
 # Auto-detekce polí podle části názvu souboru
 FIELD_MAP: dict[str, tuple[str, str]] = {
@@ -68,6 +70,8 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
     record_tag = f"{{{NS}}}record"
     for _event, elem in etree.iterparse(str(xml_path), events=["end"], tag=record_tag):
         rec_id = elem.findtext(f"{{{NS}}}controlfield[@tag='001']") or ""
+        wiki_path = WIKI_DIR / f"{rec_id}.txt"
+        wiki_text = wiki_path.read_text(encoding="utf-8")[:WIKI_MAX_CHARS] if wiki_path.exists() else ""
         preferred = None
         variants = []
 
@@ -102,7 +106,11 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
         elem.clear()
 
         if preferred:
-            yield {"record_id": rec_id, "preferred": preferred, "variants": variants, "mdt": mdt, "konspekt": konspekt, "authority_url": authority_url}
+            yield {"record_id": rec_id, "preferred": preferred, "variants": variants, "mdt": mdt, "konspekt": konspekt, "authority_url": authority_url, "wiki_text": wiki_text}
+
+
+def build_text(term: str, wiki: str) -> str:
+    return f"{E5_PASSAGE}{term}\n\n{wiki}" if wiki else E5_PASSAGE + term
 
 
 def records_to_vectors(
@@ -116,7 +124,7 @@ def records_to_vectors(
 
     for rec in records:
         ids.append(f"{rec['record_id']}_pref")
-        texts.append(E5_PASSAGE + rec["preferred"])
+        texts.append(build_text(rec["preferred"], rec["wiki_text"]))
         metas.append({
             "term": rec["preferred"],
             "preferred": rec["preferred"],
@@ -130,7 +138,7 @@ def records_to_vectors(
 
         for i, variant in enumerate(rec["variants"]):
             ids.append(f"{rec['record_id']}_var_{i}")
-            texts.append(E5_PASSAGE + variant)
+            texts.append(build_text(variant, rec["wiki_text"]))
             metas.append({
                 "term": variant,
                 "preferred": rec["preferred"],
