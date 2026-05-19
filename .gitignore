@@ -11,6 +11,9 @@ out/
 
 # data (velký soubor)
 aut_*.xml
+aut_*.xml.gz
+wiki_dump/
+data/
 
 # Python
 __pycache__/
