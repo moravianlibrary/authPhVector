@@ -2,16 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV="$SCRIPT_DIR/.venv"
 
-if [ ! -d "$VENV" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv "$VENV"
-fi
-
-echo "Installing/updating dependencies..."
-"$VENV/bin/pip" install --upgrade pip
-"$VENV/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"
+bash "$SCRIPT_DIR/setup_venv.sh"
 
 echo "Running indexing script..."
-exec "$VENV/bin/python" "$SCRIPT_DIR/index_vectors.py" "$@"
+exec "$SCRIPT_DIR/.venv/bin/python" "$SCRIPT_DIR/index_vectors.py" "$@"
