@@ -2,5 +2,4 @@ lxml>=5.0
 sentence-transformers>=2.7
 pinecone>=3.0
 tqdm>=4.67
-requests>=2.31
-beautifulsoup4>=4.12
+mwparserfromhell>=0.6
