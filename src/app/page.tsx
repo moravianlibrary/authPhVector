@@ -130,7 +130,7 @@ export default function Home() {
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         <input
-          type="search"
+          type="text"
           className="search-input"
           placeholder="Zadejte výraz…"
           value={query}
@@ -139,6 +139,20 @@ export default function Home() {
           autoComplete="off"
           spellCheck={false}
         />
+        {query && (
+          <button
+            className="search-clear"
+            aria-label="Smazat výraz"
+            onClick={() => {
+              setQuery("");
+              setResults([]);
+              setError(null);
+              setRetryMsg(null);
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <div className="search-controls">

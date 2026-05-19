@@ -58,7 +58,7 @@ body {
 
 .search-input {
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  padding: 0.75rem 2.75rem 0.75rem 2.75rem;
   font-size: 1.05rem;
   border: 2px solid var(--border);
   border-radius: 8px;
@@ -79,6 +79,26 @@ body {
   transform: translateY(-50%);
   color: var(--text-muted);
   pointer-events: none;
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.search-clear:hover {
+  color: var(--text);
 }
 
 .search-controls {
