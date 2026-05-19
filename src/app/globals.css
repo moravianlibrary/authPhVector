@@ -180,6 +180,12 @@ body {
   white-space: nowrap;
 }
 
+.mdt-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
 .result-actions {
   display: flex;
   align-items: center;

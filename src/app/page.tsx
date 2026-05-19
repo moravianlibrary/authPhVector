@@ -202,7 +202,16 @@ export default function Home() {
                 {r.mdt.length > 0 && (
                   <span className="mdt-list">
                     {r.mdt.map((v) => (
-                      <span key={v} className="mdt-badge">{v}</span>
+                      <span key={v} className="mdt-item">
+                        <span className="mdt-badge">{v}</span>
+                        <button
+                          className="copy-btn"
+                          title="Zkopírovat MDT"
+                          onClick={() => handleCopy(v, `${r.recordId}-mdt-${v}`)}
+                        >
+                          {copiedKey === `${r.recordId}-mdt-${v}` ? "✓" : "⎘"}
+                        </button>
+                      </span>
                     ))}
                   </span>
                 )}
