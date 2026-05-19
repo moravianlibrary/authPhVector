@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV="$SCRIPT_DIR/.venv"
 if [ ! -d "$VENV" ]; then
     python3 -m venv "$VENV"
-    "$VENV/bin/pip" install --quiet requests beautifulsoup4 lxml tqdm
+    "$VENV/bin/pip" install --quiet -r "$SCRIPT_DIR/requirements.txt"
 fi
 "$VENV/bin/python" "$SCRIPT_DIR/fetch_wiki.py"
 
