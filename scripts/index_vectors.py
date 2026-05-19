@@ -72,6 +72,7 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
         variants = []
 
         mdt = []
+        konspekt = []
         for df in elem.findall(f"{{{NS}}}datafield"):
             tag = df.get("tag")
             if tag == preferred_field:
@@ -86,11 +87,17 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
                 val = df.findtext(f"{{{NS}}}subfield[@code='a']")
                 if val:
                     mdt.append(val.strip())
+            elif tag == "072":
+                a = df.findtext(f"{{{NS}}}subfield[@code='a']") or ""
+                x = df.findtext(f"{{{NS}}}subfield[@code='x']") or ""
+                if a:
+                    entry = f"{a.strip()} - {x.strip()}" if x else a.strip()
+                    konspekt.append(entry)
 
         elem.clear()
 
         if preferred:
-            yield {"record_id": rec_id, "preferred": preferred, "variants": variants, "mdt": mdt}
+            yield {"record_id": rec_id, "preferred": preferred, "variants": variants, "mdt": mdt, "konspekt": konspekt}
 
 
 def records_to_vectors(
@@ -112,6 +119,7 @@ def records_to_vectors(
             "record_id": rec["record_id"],
             "source": source,
             "mdt": "|".join(rec["mdt"]),
+            "konspekt": "|".join(rec["konspekt"]),
         })
 
         for i, variant in enumerate(rec["variants"]):
@@ -124,6 +132,7 @@ def records_to_vectors(
                 "record_id": rec["record_id"],
                 "source": source,
                 "mdt": "|".join(rec["mdt"]),
+                "konspekt": "|".join(rec["konspekt"]),
             })
 
     embeddings = model.encode(

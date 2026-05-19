@@ -216,6 +216,23 @@ export default function Home() {
                   </span>
                 )}
               </div>
+
+              {r.konspekt.length > 0 && (
+                <div className="konspekt-list">
+                  {r.konspekt.map((k) => (
+                    <span key={k} className="konspekt-item">
+                      <span className="konspekt-badge">{k}</span>
+                      <button
+                        className="copy-btn"
+                        title="Zkopírovat konspekt"
+                        onClick={() => handleCopy(k, `${r.recordId}-k-${k}`)}
+                      >
+                        {copiedKey === `${r.recordId}-k-${k}` ? "✓" : "⎘"}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </li>
           ))}
         </ul>
