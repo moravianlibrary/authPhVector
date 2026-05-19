@@ -121,6 +121,13 @@ export default function Home() {
     doSearch(term, topK);
   }
 
+  function handleReset() {
+    setQuery("");
+    setResults([]);
+    setError(null);
+    setRetryMsg(null);
+  }
+
   const showEmpty = !loading && !error && !retryMsg && query.trim() === "";
   const showNoResults =
     !loading && !error && !retryMsg && query.trim() !== "" && results.length === 0;
@@ -128,8 +135,13 @@ export default function Home() {
   return (
     <main className="container">
       <div className="header">
-        <h1>Hledání synonym</h1>
-        <p>Vektorové vyhledávání v autoritním souboru Národní knihovny ČR</p>
+        <button className="logo-btn" onClick={handleReset} aria-label="Domů">
+          <img src="/logo.svg" alt="Logo" className="logo" />
+        </button>
+        <div>
+          <h1>Hledání synonym</h1>
+          <p>Vektorové vyhledávání v autoritním souboru Národní knihovny ČR</p>
+        </div>
       </div>
 
       <div className="search-box">
