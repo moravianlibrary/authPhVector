@@ -20,6 +20,7 @@ __pycache__/
 *.pyc
 .venv/
 scripts/__pycache__/
+scripts/.venv/
 
 # Build artifacts
 tsconfig.tsbuildinfo
