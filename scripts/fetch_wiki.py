@@ -38,9 +38,9 @@ def iter_wiki_records(xml_path: Path):
         rec_id = elem.findtext(f"{{{NS}}}controlfield[@tag='001']") or ""
         for df in elem.findall(f"{{{NS}}}datafield[@tag='856']"):
             url = df.findtext(f"{{{NS}}}subfield[@code='u']") or ""
-            if "wikipedia" in url.lower():
+            if "cs.wikipedia.org" in url.lower():
                 yield rec_id, url.strip()
-                break  # jeden záznam → první Wikipedia URL
+                break  # jeden záznam → první cs.wikipedia.org URL
         elem.clear()
 
 
