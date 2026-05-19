@@ -268,6 +268,27 @@ export default function Home() {
                   </button>
                 </div>
 
+                {r.authorityUrl && (
+                  <div className="meta-row">
+                    <span className="meta-label">Záznam</span>
+                    <a
+                      href={r.authorityUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="authority-link"
+                    >
+                      {r.authorityUrl}
+                    </a>
+                    <button
+                      className="copy-btn"
+                      title="Zkopírovat URL"
+                      onClick={() => handleCopy(r.authorityUrl, `${r.recordId}-url`)}
+                    >
+                      {copiedKey === `${r.recordId}-url` ? "✓" : "⎘"}
+                    </button>
+                  </div>
+                )}
+
                 {r.mdt.length > 0 && (
                   <div className="meta-row">
                     <span className="meta-label">MDT</span>

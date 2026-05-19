@@ -342,6 +342,20 @@ body {
   background: #bee3f8;
 }
 
+.authority-link {
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40ch;
+}
+
+.authority-link:hover {
+  text-decoration: underline;
+}
+
 .konspekt-list {
   display: flex;
   flex-wrap: wrap;

@@ -15,6 +15,7 @@ export interface SearchResult {
   score: number;
   mdt: string[];
   konspekt: string[];
+  authorityUrl: string;
 }
 
 async function embedQuery(query: string): Promise<number[]> {
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest) {
         record_id: string;
         mdt: string;
         konspekt: string;
+        authority_url: string;
       };
       if (seen.has(meta.preferred)) continue;
       seen.add(meta.preferred);
@@ -126,6 +128,7 @@ export async function POST(req: NextRequest) {
         score: Math.round(match.score * 1000) / 1000,
         mdt: meta.mdt ? meta.mdt.split("|").filter(Boolean) : [],
         konspekt: meta.konspekt ? meta.konspekt.split("|").filter(Boolean) : [],
+        authorityUrl: meta.authority_url ?? "",
       });
 
       if (results.length >= topK) break;
