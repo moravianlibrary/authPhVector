@@ -90,7 +90,7 @@ async function queryPinecone(
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const query: string = (body.query ?? "").trim();
-  const topK: number = Math.min(Math.max(Number(body.topK) || 10, 1), 50);
+  const topK: number = Math.min(Math.max(Number(body.topK) || 10, 1), 100);
 
   if (!query) {
     return NextResponse.json({ error: "Prázdný dotaz" }, { status: 400 });

@@ -81,6 +81,33 @@ body {
   pointer-events: none;
 }
 
+.search-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.controls-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.topk-select {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.topk-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .status-bar {
   min-height: 1.5rem;
   margin-bottom: 0.75rem;

@@ -20,6 +20,7 @@ function scoreClass(score: number): string {
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [topK, setTopK] = useState<number>(10);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export default function Home() {
     setTimeout(() => setCopiedKey(null), 1500);
   }
 
-  const doSearch = useCallback(async (q: string) => {
+  const doSearch = useCallback(async (q: string, k: number) => {
     if (!q.trim()) {
       setResults([]);
       setError(null);
@@ -49,7 +50,7 @@ export default function Home() {
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, topK: 10 }),
+        body: JSON.stringify({ query: q, topK: k }),
       });
 
       const data = await res.json();
@@ -58,7 +59,7 @@ export default function Home() {
         const wait: number = data.retryAfter ?? 20;
         setRetryMsg(`Embedding model se spouští, zkusím znovu za ${wait} s…`);
         setLoading(false);
-        retryTimeout.current = setTimeout(() => doSearch(q), wait * 1000);
+        retryTimeout.current = setTimeout(() => doSearch(q, k), wait * 1000);
         return;
       }
 
@@ -85,15 +86,20 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    if (query.trim()) doSearch(query, topK);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topK]);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setQuery(val);
-    debouncedSearch(val);
+    debouncedSearch(val, topK);
   }
 
   function handleExample(term: string) {
     setQuery(term);
-    doSearch(term);
+    doSearch(term, topK);
   }
 
   const showEmpty = !loading && !error && !retryMsg && query.trim() === "";
@@ -133,6 +139,20 @@ export default function Home() {
           autoComplete="off"
           spellCheck={false}
         />
+      </div>
+
+      <div className="search-controls">
+        <label htmlFor="topk-select" className="controls-label">Počet výsledků:</label>
+        <select
+          id="topk-select"
+          className="topk-select"
+          value={topK}
+          onChange={(e) => setTopK(Number(e.target.value))}
+        >
+          {[10, 20, 50, 100].map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
       </div>
 
       <div className="status-bar">
