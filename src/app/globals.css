@@ -162,6 +162,24 @@ body {
   color: var(--text-muted);
 }
 
+.mdt-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.mdt-badge {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
 .result-actions {
   display: flex;
   align-items: center;

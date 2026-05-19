@@ -13,6 +13,7 @@ export interface SearchResult {
   matchedTerm: string;
   isVariant: boolean;
   score: number;
+  mdt: string[];
 }
 
 async function embedQuery(query: string): Promise<number[]> {
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
         term: string;
         is_variant: boolean;
         record_id: string;
+        mdt: string;
       };
       if (seen.has(meta.preferred)) continue;
       seen.add(meta.preferred);
@@ -120,6 +122,7 @@ export async function POST(req: NextRequest) {
         matchedTerm: meta.term,
         isVariant: Boolean(meta.is_variant),
         score: Math.round(match.score * 1000) / 1000,
+        mdt: meta.mdt ? meta.mdt.split("|").filter(Boolean) : [],
       });
 
       if (results.length >= topK) break;

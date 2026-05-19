@@ -199,6 +199,13 @@ export default function Home() {
                 >
                   {copiedKey === `${r.recordId}-id` ? "✓" : "⎘"}
                 </button>
+                {r.mdt.length > 0 && (
+                  <span className="mdt-list">
+                    {r.mdt.map((v) => (
+                      <span key={v} className="mdt-badge">{v}</span>
+                    ))}
+                  </span>
+                )}
               </div>
             </li>
           ))}

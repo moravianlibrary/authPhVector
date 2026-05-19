@@ -71,6 +71,7 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
         preferred = None
         variants = []
 
+        mdt = []
         for df in elem.findall(f"{{{NS}}}datafield"):
             tag = df.get("tag")
             if tag == preferred_field:
@@ -81,11 +82,15 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
                 val = df.findtext(f"{{{NS}}}subfield[@code='a']")
                 if val:
                     variants.append(val.strip())
+            elif tag == "080":
+                val = df.findtext(f"{{{NS}}}subfield[@code='a']")
+                if val:
+                    mdt.append(val.strip())
 
         elem.clear()
 
         if preferred:
-            yield {"record_id": rec_id, "preferred": preferred, "variants": variants}
+            yield {"record_id": rec_id, "preferred": preferred, "variants": variants, "mdt": mdt}
 
 
 def records_to_vectors(
@@ -106,6 +111,7 @@ def records_to_vectors(
             "is_variant": False,
             "record_id": rec["record_id"],
             "source": source,
+            "mdt": "|".join(rec["mdt"]),
         })
 
         for i, variant in enumerate(rec["variants"]):
@@ -117,6 +123,7 @@ def records_to_vectors(
                 "is_variant": True,
                 "record_id": rec["record_id"],
                 "source": source,
+                "mdt": "|".join(rec["mdt"]),
             })
 
     embeddings = model.encode(
