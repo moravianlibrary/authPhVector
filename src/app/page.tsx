@@ -86,6 +86,25 @@ export default function Home() {
     };
   }, []);
 
+  // Načíst výraz z URL fragmentu při prvním otevření stránky
+  useEffect(() => {
+    const hash = decodeURIComponent(window.location.hash.slice(1));
+    if (hash) {
+      setQuery(hash);
+      doSearch(hash, topK);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Synchronizovat URL fragment s aktuálním výrazem
+  useEffect(() => {
+    if (query) {
+      window.history.replaceState(null, "", `#${encodeURIComponent(query)}`);
+    } else {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [query]);
+
   useEffect(() => {
     if (query.trim()) doSearch(query, topK);
     // eslint-disable-next-line react-hooks/exhaustive-deps
