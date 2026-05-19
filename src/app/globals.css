@@ -166,7 +166,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  margin-left: auto;
 }
 
 .mdt-badge {
@@ -193,10 +192,28 @@ body {
   flex-shrink: 0;
 }
 
-.result-footer {
+.meta-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+}
+
+.meta-row {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.meta-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 4.5rem;
+  flex-shrink: 0;
 }
 
 .copy-btn {
@@ -259,7 +276,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  margin-top: 0.375rem;
 }
 
 .konspekt-item {

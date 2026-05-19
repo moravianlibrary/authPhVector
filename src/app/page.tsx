@@ -190,49 +190,59 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="result-footer">
-                <span className="record-id">{r.recordId}</span>
-                <button
-                  className="copy-btn"
-                  title="Zkopírovat ID záznamu"
-                  onClick={() => handleCopy(r.recordId, `${r.recordId}-id`)}
-                >
-                  {copiedKey === `${r.recordId}-id` ? "✓" : "⎘"}
-                </button>
+              <div className="meta-rows">
+                <div className="meta-row">
+                  <span className="meta-label">ID</span>
+                  <span className="record-id">{r.recordId}</span>
+                  <button
+                    className="copy-btn"
+                    title="Zkopírovat ID záznamu"
+                    onClick={() => handleCopy(r.recordId, `${r.recordId}-id`)}
+                  >
+                    {copiedKey === `${r.recordId}-id` ? "✓" : "⎘"}
+                  </button>
+                </div>
+
                 {r.mdt.length > 0 && (
-                  <span className="mdt-list">
-                    {r.mdt.map((v) => (
-                      <span key={v} className="mdt-item">
-                        <span className="mdt-badge">{v}</span>
-                        <button
-                          className="copy-btn"
-                          title="Zkopírovat MDT"
-                          onClick={() => handleCopy(v, `${r.recordId}-mdt-${v}`)}
-                        >
-                          {copiedKey === `${r.recordId}-mdt-${v}` ? "✓" : "⎘"}
-                        </button>
-                      </span>
-                    ))}
-                  </span>
+                  <div className="meta-row">
+                    <span className="meta-label">MDT</span>
+                    <span className="mdt-list">
+                      {r.mdt.map((v) => (
+                        <span key={v} className="mdt-item">
+                          <span className="mdt-badge">{v}</span>
+                          <button
+                            className="copy-btn"
+                            title="Zkopírovat MDT"
+                            onClick={() => handleCopy(v, `${r.recordId}-mdt-${v}`)}
+                          >
+                            {copiedKey === `${r.recordId}-mdt-${v}` ? "✓" : "⎘"}
+                          </button>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+
+                {r.konspekt.length > 0 && (
+                  <div className="meta-row">
+                    <span className="meta-label">Konspekt</span>
+                    <span className="konspekt-list">
+                      {r.konspekt.map((k) => (
+                        <span key={k} className="konspekt-item">
+                          <span className="konspekt-badge">{k}</span>
+                          <button
+                            className="copy-btn"
+                            title="Zkopírovat konspekt"
+                            onClick={() => handleCopy(k, `${r.recordId}-k-${k}`)}
+                          >
+                            {copiedKey === `${r.recordId}-k-${k}` ? "✓" : "⎘"}
+                          </button>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
                 )}
               </div>
-
-              {r.konspekt.length > 0 && (
-                <div className="konspekt-list">
-                  {r.konspekt.map((k) => (
-                    <span key={k} className="konspekt-item">
-                      <span className="konspekt-badge">{k}</span>
-                      <button
-                        className="copy-btn"
-                        title="Zkopírovat konspekt"
-                        onClick={() => handleCopy(k, `${r.recordId}-k-${k}`)}
-                      >
-                        {copiedKey === `${r.recordId}-k-${k}` ? "✓" : "⎘"}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </li>
           ))}
         </ul>
