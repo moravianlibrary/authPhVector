@@ -1,0 +1,17 @@
+# Python virtual environments (anywhere in tree)
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.pyc
+
+# Large data files
+aut_*.xml
+aut_*.xml.gz
+wiki_dump
+data
+scripts/.venv
+
+# Build artifacts
+.next/
+out/
+tsconfig.tsbuildinfo
