@@ -24,7 +24,14 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryMsg, setRetryMsg] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function handleCopy(text: string, key: string) {
+    await navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1500);
+  }
 
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
@@ -163,9 +170,18 @@ export default function Home() {
             >
               <div className="result-header">
                 <span className="preferred-term">{r.preferredTerm}</span>
-                <span className={`score ${scoreClass(r.score)}`}>
-                  {(r.score * 100).toFixed(1)} %
-                </span>
+                <div className="result-actions">
+                  <button
+                    className="copy-btn"
+                    title="Zkopírovat výraz"
+                    onClick={() => handleCopy(r.preferredTerm, `${r.recordId}-term`)}
+                  >
+                    {copiedKey === `${r.recordId}-term` ? "✓" : "⎘"}
+                  </button>
+                  <span className={`score ${scoreClass(r.score)}`}>
+                    {(r.score * 100).toFixed(1)} %
+                  </span>
+                </div>
               </div>
 
               {r.isVariant && (
@@ -174,7 +190,16 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="record-id">{r.recordId}</div>
+              <div className="result-footer">
+                <span className="record-id">{r.recordId}</span>
+                <button
+                  className="copy-btn"
+                  title="Zkopírovat ID záznamu"
+                  onClick={() => handleCopy(r.recordId, `${r.recordId}-id`)}
+                >
+                  {copiedKey === `${r.recordId}-id` ? "✓" : "⎘"}
+                </button>
+              </div>
             </li>
           ))}
         </ul>
