@@ -12,6 +12,12 @@ const EXAMPLES = [
   "počítačové sítě",
 ];
 
+const SOURCE_LABELS: Record<string, string> = {
+  ph: "Předmětové heslo",
+  ge: "Geografický termín",
+  sk: "Konspekt",
+};
+
 function scoreClass(score: number): string {
   if (score >= 0.75) return "score-high";
   if (score >= 0.5) return "score-mid";
@@ -236,6 +242,9 @@ export default function Home() {
               <div className="result-header">
                 <span className="preferred-term">{r.preferredTerm}</span>
                 <div className="result-actions">
+                  {SOURCE_LABELS[r.source] && (
+                    <span className="source-badge">{SOURCE_LABELS[r.source]}</span>
+                  )}
                   <button
                     className="copy-btn"
                     title="Zkopírovat výraz"

@@ -16,6 +16,7 @@ export interface SearchResult {
   mdt: string[];
   konspekt: string[];
   authorityUrl: string;
+  source: string;
 }
 
 async function embedQuery(query: string): Promise<number[]> {
@@ -116,6 +117,7 @@ export async function POST(req: NextRequest) {
         mdt: string;
         konspekt: string;
         authority_url: string;
+        source: string;
       };
       if (seen.has(meta.preferred)) continue;
       seen.add(meta.preferred);
@@ -129,6 +131,7 @@ export async function POST(req: NextRequest) {
         mdt: meta.mdt ? meta.mdt.split("|").filter(Boolean) : [],
         konspekt: meta.konspekt ? meta.konspekt.split("|").filter(Boolean) : [],
         authorityUrl: meta.authority_url ?? "",
+        source: meta.source ?? "",
       });
 
       if (results.length >= topK) break;

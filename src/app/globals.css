@@ -262,6 +262,17 @@ body {
   flex-shrink: 0;
 }
 
+.source-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.15rem 0.4rem;
+  white-space: nowrap;
+}
+
 .meta-rows {
   display: flex;
   flex-direction: column;
