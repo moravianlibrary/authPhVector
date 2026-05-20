@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 const PINECONE_INDEX_HOST = process.env.PINECONE_INDEX_HOST!;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY!;
 const HF_API_TOKEN = process.env.HF_TOKEN!;
-// Nový HF Inference Router endpoint (2025)
-const HF_MODEL_URL =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-small/pipeline/feature-extraction";
+
+const ALLOWED_MODELS = new Set(["intfloat/multilingual-e5-small"]);
+const DEFAULT_MODEL = "intfloat/multilingual-e5-small";
 
 export interface SearchResult {
   recordId: string;
@@ -19,9 +19,10 @@ export interface SearchResult {
   source: string;
 }
 
-async function embedQuery(query: string): Promise<number[]> {
+async function embedQuery(query: string, modelId: string): Promise<number[]> {
+  const url = `https://router.huggingface.co/hf-inference/models/${modelId}/pipeline/feature-extraction`;
   // e5 modely vyžadují prefix "query: " pro vyhledávací dotazy
-  const res = await fetch(HF_MODEL_URL, {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${HF_API_TOKEN}`,
@@ -95,6 +96,8 @@ export async function POST(req: NextRequest) {
   const query: string = (body.query ?? "").trim();
   const topK: number = Math.min(Math.max(Number(body.topK) || 10, 1), 100);
   const source: string = (body.source ?? "").trim();
+  const rawModel: string = (body.model ?? "").trim();
+  const modelId = ALLOWED_MODELS.has(rawModel) ? rawModel : DEFAULT_MODEL;
 
   if (!query) {
     return NextResponse.json({ error: "Prázdný dotaz" }, { status: 400 });
@@ -103,7 +106,7 @@ export async function POST(req: NextRequest) {
   const filter = source ? { source: { "$eq": source } } : undefined;
 
   try {
-    const vector = await embedQuery(query);
+    const vector = await embedQuery(query, modelId);
     // Načteme více výsledků než potřebujeme, abychom měli zásobu po deduplikaci
     const raw = await queryPinecone(vector, topK * 3, filter);
 

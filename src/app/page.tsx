@@ -12,6 +12,10 @@ const EXAMPLES = [
   "počítačové sítě",
 ];
 
+const MODELS: Record<string, string> = {
+  "intfloat/multilingual-e5-small": "Základní (intfloat/multilingual-e5-small)",
+};
+
 const SOURCE_LABELS: Record<string, string> = {
   ph: "Předmětové heslo",
   ge: "Geografický termín",
@@ -29,6 +33,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState<number>(10);
   const [sourceFilter, setSourceFilter] = useState<string>("");
+  const [model, setModel] = useState<string>("intfloat/multilingual-e5-small");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +47,7 @@ export default function Home() {
     setTimeout(() => setCopiedKey(null), 1500);
   }
 
-  const doSearch = useCallback(async (q: string, k: number, src = "") => {
+  const doSearch = useCallback(async (q: string, k: number, src = "", mdl = "intfloat/multilingual-e5-small") => {
     if (!q.trim()) {
       setResults([]);
       setError(null);
@@ -58,7 +63,7 @@ export default function Home() {
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, topK: k, source: src }),
+        body: JSON.stringify({ query: q, topK: k, source: src, model: mdl }),
       });
 
       const data = await res.json();
@@ -67,7 +72,7 @@ export default function Home() {
         const wait: number = data.retryAfter ?? 20;
         setRetryMsg(`Embedding model se spouští, zkusím znovu za ${wait} s…`);
         setLoading(false);
-        retryTimeout.current = setTimeout(() => doSearch(q, k, src), wait * 1000);
+        retryTimeout.current = setTimeout(() => doSearch(q, k, src, mdl), wait * 1000);
         return;
       }
 
@@ -101,7 +106,7 @@ export default function Home() {
     if (src) setSourceFilter(src);
     if (hash) {
       setQuery(hash);
-      doSearch(hash, topK, src);
+      doSearch(hash, topK, src, model);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -129,24 +134,29 @@ export default function Home() {
   }, [sourceFilter]);
 
   useEffect(() => {
-    if (query.trim()) doSearch(query, topK, sourceFilter);
+    if (query.trim()) doSearch(query, topK, sourceFilter, model);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topK]);
 
   useEffect(() => {
-    if (query.trim()) doSearch(query, topK, sourceFilter);
+    if (query.trim()) doSearch(query, topK, sourceFilter, model);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceFilter]);
+
+  useEffect(() => {
+    if (query.trim()) doSearch(query, topK, sourceFilter, model);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setQuery(val);
-    debouncedSearch(val, topK, sourceFilter);
+    debouncedSearch(val, topK, sourceFilter, model);
   }
 
   function handleExample(term: string) {
     setQuery(term);
-    doSearch(term, topK, sourceFilter);
+    doSearch(term, topK, sourceFilter, model);
   }
 
   function handleReset() {
@@ -215,6 +225,17 @@ export default function Home() {
       </div>
 
       <div className="search-controls">
+        <label htmlFor="model-select" className="controls-label">Model:</label>
+        <select
+          id="model-select"
+          className="topk-select"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+        >
+          {Object.entries(MODELS).map(([id, label]) => (
+            <option key={id} value={id}>{label}</option>
+          ))}
+        </select>
         <label htmlFor="topk-select" className="controls-label">Počet výsledků:</label>
         <select
           id="topk-select"
