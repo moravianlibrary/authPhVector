@@ -26,7 +26,7 @@ python scripts/index_vectors.py   # parses aut_ph.xml → uploads vectors to Pin
 If there is error PEP 688, you can install dependencies and run indexing with this command:
 
 ```
-scripts/run_indexing.sh
+bin/run_indexing.sh
 ```
 
 `aut_ph.xml` is gitignored (large MARCXML file, ~100 MB).
