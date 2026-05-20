@@ -70,7 +70,8 @@ async function embedQuery(query: string): Promise<number[]> {
 
 async function queryPinecone(
   vector: number[],
-  topK: number
+  topK: number,
+  filter?: Record<string, unknown>
 ): Promise<{ matches: Array<{ score: number; metadata: Record<string, unknown> }> }> {
   const res = await fetch(`${PINECONE_INDEX_HOST}/query`, {
     method: "POST",
@@ -78,7 +79,7 @@ async function queryPinecone(
       "Api-Key": PINECONE_API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ vector, topK, includeMetadata: true }),
+    body: JSON.stringify({ vector, topK, includeMetadata: true, ...(filter ? { filter } : {}) }),
   });
 
   if (!res.ok) {
@@ -93,15 +94,18 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const query: string = (body.query ?? "").trim();
   const topK: number = Math.min(Math.max(Number(body.topK) || 10, 1), 100);
+  const source: string = (body.source ?? "").trim();
 
   if (!query) {
     return NextResponse.json({ error: "Prázdný dotaz" }, { status: 400 });
   }
 
+  const filter = source ? { source: { "$eq": source } } : undefined;
+
   try {
     const vector = await embedQuery(query);
     // Načteme více výsledků než potřebujeme, abychom měli zásobu po deduplikaci
-    const raw = await queryPinecone(vector, topK * 3);
+    const raw = await queryPinecone(vector, topK * 3, filter);
 
     // Deduplikace: ze shodné autority (stejný preferred term) ponecháme
     // pouze nejlépe skórující shodu, ať už šlo o preferred nebo variant.

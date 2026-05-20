@@ -27,6 +27,7 @@ function scoreClass(score: number): string {
 export default function Home() {
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState<number>(10);
+  const [sourceFilter, setSourceFilter] = useState<string>("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export default function Home() {
     setTimeout(() => setCopiedKey(null), 1500);
   }
 
-  const doSearch = useCallback(async (q: string, k: number) => {
+  const doSearch = useCallback(async (q: string, k: number, src = "") => {
     if (!q.trim()) {
       setResults([]);
       setError(null);
@@ -56,7 +57,7 @@ export default function Home() {
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, topK: k }),
+        body: JSON.stringify({ query: q, topK: k, source: src }),
       });
 
       const data = await res.json();
@@ -65,7 +66,7 @@ export default function Home() {
         const wait: number = data.retryAfter ?? 20;
         setRetryMsg(`Embedding model se spouští, zkusím znovu za ${wait} s…`);
         setLoading(false);
-        retryTimeout.current = setTimeout(() => doSearch(q, k), wait * 1000);
+        retryTimeout.current = setTimeout(() => doSearch(q, k, src), wait * 1000);
         return;
       }
 
@@ -112,19 +113,24 @@ export default function Home() {
   }, [query]);
 
   useEffect(() => {
-    if (query.trim()) doSearch(query, topK);
+    if (query.trim()) doSearch(query, topK, sourceFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topK]);
+
+  useEffect(() => {
+    if (query.trim()) doSearch(query, topK, sourceFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceFilter]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setQuery(val);
-    debouncedSearch(val, topK);
+    debouncedSearch(val, topK, sourceFilter);
   }
 
   function handleExample(term: string) {
     setQuery(term);
-    doSearch(term, topK);
+    doSearch(term, topK, sourceFilter);
   }
 
   function handleReset() {
@@ -204,6 +210,19 @@ export default function Home() {
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
+      </div>
+
+      <div className="source-filter">
+        <span className="controls-label">Typ záznamu:</span>
+        {(["", "ph", "ge", "sk"] as const).map((src) => (
+          <button
+            key={src}
+            className={`source-filter-btn${src ? ` source-filter-btn-${src}` : ""}${sourceFilter === src ? " active" : ""}`}
+            onClick={() => setSourceFilter(src)}
+          >
+            {src === "" ? "Vše" : SOURCE_LABELS[src]}
+          </button>
+        ))}
       </div>
 
       <div className="status-bar">

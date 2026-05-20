@@ -151,6 +151,49 @@ body {
   border-color: var(--accent);
 }
 
+.source-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.source-filter-btn {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.source-filter-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.source-filter-btn.active {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.source-filter-btn-ph { border-color: #bfdbfe; color: #1d4ed8; }
+.source-filter-btn-ph:hover,
+.source-filter-btn-ph.active { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+
+.source-filter-btn-ge { border-color: #bbf7d0; color: #15803d; }
+.source-filter-btn-ge:hover,
+.source-filter-btn-ge.active { background: #15803d; color: #fff; border-color: #15803d; }
+
+.source-filter-btn-sk { border-color: #fed7aa; color: #c2410c; }
+.source-filter-btn-sk:hover,
+.source-filter-btn-sk.active { background: #c2410c; color: #fff; border-color: #c2410c; }
+
 .status-bar {
   min-height: 1.5rem;
   margin-bottom: 0.75rem;
