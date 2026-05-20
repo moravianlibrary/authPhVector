@@ -29,6 +29,17 @@ done < "$DUMP_DIR/urls2.txt"
 
 bash "$SCRIPT_DIR/setup_venv.sh"
 
+echo "Downloading Wikipedia redirects..."
+REDIRECT_OUT="$DUMP_DIR/redirect.txt"
+if [ ! -f "$REDIRECT_OUT" ]; then
+    wget -q --show-progress \
+        "https://dumps.wikimedia.org/cswiki/latest/cswiki-latest-redirect.sql.gz" \
+        -O - | gunzip | "$SCRIPT_DIR/.venv/bin/python" "$SCRIPT_DIR/parse_redirect_sql.py" \
+        > "$REDIRECT_OUT"
+else
+    echo "  Already exists: redirect.txt"
+fi
+
 echo "Fetching Wikipedia pages..."
 "$SCRIPT_DIR/.venv/bin/python" "$SCRIPT_DIR/fetch_wiki.py"
 
