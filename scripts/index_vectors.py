@@ -255,6 +255,11 @@ def main() -> None:
         choices=list(MODEL_CONFIGS),
         help=f"Embedding model (výchozí: {DEFAULT_MODEL}).",
     )
+    parser.add_argument(
+        "--device",
+        default=None,
+        help="Zařízení pro výpočet embeddingů (např. cuda, cpu). Výchozí: cuda pokud dostupné, jinak cpu.",
+    )
     args = parser.parse_args()
 
     model_cfg = MODEL_CONFIGS[args.model]
@@ -294,8 +299,10 @@ def main() -> None:
     ensure_index(pc, index_name, dimension)
     index = pc.Index(host=index_host) if index_host else pc.Index(index_name)
 
-    model = SentenceTransformer(args.model)
-    logging.info(f"Model '{args.model}' načten.")
+    import torch
+    device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
+    model = SentenceTransformer(args.model, device=device)
+    logging.info(f"Model '{args.model}' načten na zařízení: {device}.")
 
     grand_total = 0
     for xml_path in paths:
