@@ -3,12 +3,15 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "Downloading data"
+AUT_URL_BASE="https://aleph.nkp.cz/data"
+AUT_FILES=(aut_ph.xml.gz aut_ge.xml.gz aut_sk.xml.gz)
 AUT_DIR="$SCRIPT_DIR/../data/aut"
 mkdir -p "$AUT_DIR"
-wget "https://aleph.nkp.cz/data/aut_ph.xml.gz" -O "$AUT_DIR/aut_ph.xml.gz"
-gunzip "$AUT_DIR/aut_ph.xml.gz"
-wget "https://aleph.nkp.cz/data/aut_ge.xml.gz" -O "$AUT_DIR/aut_ge.xml.gz"
-gunzip "$AUT_DIR/aut_ge.xml.gz"
+for filename in "${AUT_FILES[@]}"; do
+    echo "  Downloading: $filename"
+    wget "$AUT_URL_BASE/$filename" -O "$AUT_DIR/$filename"
+    gunzip -f "$AUT_DIR/$filename"
+done
 
 echo "Downloading Wikipedia dump files..."
 DUMP_DIR="$SCRIPT_DIR/../data/wiki_dump"
