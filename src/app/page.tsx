@@ -240,14 +240,16 @@ export default function Home() {
               className={`result-card${r.isVariant ? " is-variant" : ""}`}
             >
               <div className="result-header">
-                <span className="preferred-term">{r.preferredTerm}</span>
-                <button
-                  className="copy-btn"
-                  title="Zkopírovat výraz"
-                  onClick={() => handleCopy(r.preferredTerm, `${r.recordId}-term`)}
-                >
-                  {copiedKey === `${r.recordId}-term` ? "✓" : "⎘"}
-                </button>
+                <span className="term-with-copy">
+                  <span className="preferred-term">{r.preferredTerm}</span>
+                  <button
+                    className="copy-btn"
+                    title="Zkopírovat výraz"
+                    onClick={() => handleCopy(r.preferredTerm, `${r.recordId}-term`)}
+                  >
+                    {copiedKey === `${r.recordId}-term` ? "✓" : "⎘"}
+                  </button>
+                </span>
                 <div className="result-actions">
                   {SOURCE_LABELS[r.source] && (
                     <span className="source-badge">{SOURCE_LABELS[r.source]}</span>
