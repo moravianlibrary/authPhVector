@@ -9,7 +9,7 @@ wget "https://aleph.nkp.cz/data/aut_ge.xml.gz" -O aut_ge.xml.gz
 gunzip aut_ge.xml.gz
 
 echo "Downloading Wikipedia dump files..."
-DUMP_DIR="$SCRIPT_DIR/../wiki_dump"
+DUMP_DIR="$SCRIPT_DIR/../data/wiki_dump"
 mkdir -p "$DUMP_DIR"
 while IFS= read -r url; do
     [ -z "$url" ] && continue

@@ -10,8 +10,8 @@ Použití:
 
 Vyžaduje:
   pip install -r requirements.txt
-  wiki_dump/cswiki-latest-pages-articles-multistream-index.txt.bz2
-  wiki_dump/cswiki-latest-pages-articles-multistream.xml.bz2
+  data/wiki_dump/cswiki-latest-pages-articles-multistream-index.txt.bz2
+  data/wiki_dump/cswiki-latest-pages-articles-multistream.xml.bz2
 """
 
 import argparse
@@ -322,8 +322,8 @@ def main() -> None:
     parser.add_argument(
         "--dump-dir",
         type=Path,
-        default=DATA_DIR / "wiki_dump",
-        help="Adresář s Wikipedia dump soubory (výchozí: wiki_dump/).",
+        default=DATA_DIR / "data" / "wiki_dump",
+        help="Adresář s Wikipedia dump soubory (výchozí: data/wiki_dump/).",
     )
     args = parser.parse_args()
 
