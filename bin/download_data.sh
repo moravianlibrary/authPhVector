@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="$SCRIPT_DIR/../scripts"
 
 echo "Downloading data"
 AUT_URL_BASE="https://aleph.nkp.cz/data"
@@ -34,13 +35,13 @@ REDIRECT_OUT="$DUMP_DIR/redirect.txt"
 if [ ! -f "$REDIRECT_OUT" ]; then
     wget -q --show-progress \
         "https://dumps.wikimedia.org/cswiki/latest/cswiki-latest-redirect.sql.gz" \
-        -O - | gunzip | "$SCRIPT_DIR/.venv/bin/python" "$SCRIPT_DIR/parse_redirect_sql.py" \
+        -O - | gunzip | "$SCRIPTS_DIR/.venv/bin/python" "$SCRIPTS_DIR/parse_redirect_sql.py" \
         > "$REDIRECT_OUT"
 else
     echo "  Already exists: redirect.txt"
 fi
 
 echo "Fetching Wikipedia pages..."
-"$SCRIPT_DIR/.venv/bin/python" "$SCRIPT_DIR/fetch_wiki.py"
+"$SCRIPTS_DIR/.venv/bin/python" "$SCRIPTS_DIR/fetch_wiki.py"
 
 echo "Done"
