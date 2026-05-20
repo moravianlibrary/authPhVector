@@ -9,8 +9,7 @@ AUT_DIR="$SCRIPT_DIR/../data/aut"
 mkdir -p "$AUT_DIR"
 for filename in "${AUT_FILES[@]}"; do
     echo "  Downloading: $filename"
-    wget "$AUT_URL_BASE/$filename" -O "$AUT_DIR/$filename"
-    gunzip -f "$AUT_DIR/$filename"
+    wget -q --show-progress "$AUT_URL_BASE/$filename" -O - | gunzip > "$AUT_DIR/${filename%.gz}"
 done
 
 echo "Downloading Wikipedia dump files..."
