@@ -93,24 +93,39 @@ export default function Home() {
     };
   }, []);
 
-  // Načíst výraz z URL fragmentu při prvním otevření stránky
+  // Načíst výraz a filtr z URL při prvním otevření stránky
   useEffect(() => {
     const hash = decodeURIComponent(window.location.hash.slice(1));
+    const src = new URLSearchParams(window.location.search).get("source") ?? "";
+    if (src) setSourceFilter(src);
     if (hash) {
       setQuery(hash);
-      doSearch(hash, topK);
+      doSearch(hash, topK, src);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Synchronizovat URL fragment s aktuálním výrazem
+  // Synchronizovat URL fragment s aktuálním výrazem (zachovat search params)
   useEffect(() => {
+    const search = window.location.search;
     if (query) {
-      window.history.replaceState(null, "", `#${encodeURIComponent(query)}`);
+      window.history.replaceState(null, "", `${search}#${encodeURIComponent(query)}`);
     } else {
-      window.history.replaceState(null, "", window.location.pathname);
+      window.history.replaceState(null, "", window.location.pathname + search);
     }
   }, [query]);
+
+  // Synchronizovat source filtr do URL search params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (sourceFilter) {
+      params.set("source", sourceFilter);
+    } else {
+      params.delete("source");
+    }
+    const search = params.toString() ? `?${params.toString()}` : "";
+    window.history.replaceState(null, "", `${window.location.pathname}${search}${window.location.hash}`);
+  }, [sourceFilter]);
 
   useEffect(() => {
     if (query.trim()) doSearch(query, topK, sourceFilter);
