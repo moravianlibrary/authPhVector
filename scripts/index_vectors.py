@@ -37,11 +37,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 NS = "http://www.loc.gov/MARC21/slim"
 DATA_DIR = Path(__file__).parent.parent
-MODEL_NAME = "intfloat/multilingual-e5-small"
-INDEX_NAME = "authph"
+MODEL_CONFIGS: dict[str, dict] = {
+    "intfloat/multilingual-e5-small": {
+        "index_name": "authph",
+        "index_host_env": "PINECONE_INDEX_HOST",
+        "dimension": 384,
+        "passage_prefix": "passage: ",
+    },
+    "Qwen/Qwen3-Embedding-0.6B": {
+        "index_name": "authph-qwen3-06b",
+        "index_host_env": "PINECONE_INDEX_HOST_QWEN3_06B",
+        "dimension": 1024,
+        "passage_prefix": "",
+    },
+}
+DEFAULT_MODEL = "intfloat/multilingual-e5-small"
 RECORDS_PER_BATCH = 200
 ENCODE_BATCH_SIZE = 64
-E5_PASSAGE = "passage: "
 AUT_DIR = DATA_DIR / "data" / "aut"
 WIKI_DIR = DATA_DIR / "data" / "wiki"
 WIKI_MAX_CHARS = 1000
@@ -120,12 +132,12 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str, comb
             yield {"record_id": rec_id, "preferred": preferred, "vector_text": vector_text, "variants": variants, "mdt": mdt, "konspekt": konspekt, "authority_url": authority_url, "wiki_text": wiki_text}
 
 
-def build_text(term: str, wiki: str) -> str:
-    return f"{E5_PASSAGE}{term}\n\n{wiki}" if wiki else E5_PASSAGE + term
+def build_text(term: str, wiki: str, passage_prefix: str) -> str:
+    return f"{passage_prefix}{term}\n\n{wiki}" if wiki else f"{passage_prefix}{term}"
 
 
 def records_to_vectors(
-    records: list[dict], model: SentenceTransformer, source: str
+    records: list[dict], model: SentenceTransformer, source: str, passage_prefix: str
 ) -> list[dict]:
     """
     Převede dávku záznamů na vektory pro Pinecone upsert.
@@ -135,7 +147,7 @@ def records_to_vectors(
 
     for rec in records:
         ids.append(f"{rec['record_id']}_pref")
-        texts.append(build_text(rec["vector_text"], rec["wiki_text"]))
+        texts.append(build_text(rec["vector_text"], rec["wiki_text"], passage_prefix))
         metas.append({
             "term": rec["preferred"],
             "preferred": rec["preferred"],
@@ -149,7 +161,7 @@ def records_to_vectors(
 
         for i, variant in enumerate(rec["variants"]):
             ids.append(f"{rec['record_id']}_var_{i}")
-            texts.append(build_text(variant, rec["wiki_text"]))
+            texts.append(build_text(variant, rec["wiki_text"], passage_prefix))
             metas.append({
                 "term": variant,
                 "preferred": rec["preferred"],
@@ -174,19 +186,19 @@ def records_to_vectors(
     ]
 
 
-def ensure_index(pc: Pinecone) -> None:
+def ensure_index(pc: Pinecone, index_name: str, dimension: int) -> None:
     existing = [idx.name for idx in pc.list_indexes()]
-    if INDEX_NAME not in existing:
-        logging.info(f"Vytvářím Pinecone index '{INDEX_NAME}'...")
+    if index_name not in existing:
+        logging.info(f"Vytvářím Pinecone index '{index_name}'...")
         pc.create_index(
-            name=INDEX_NAME,
-            dimension=384,
+            name=index_name,
+            dimension=dimension,
             metric="cosine",
             spec=ServerlessSpec(cloud="aws", region="us-east-1"),
         )
         logging.info("Index vytvořen.")
     else:
-        logging.info(f"Index '{INDEX_NAME}' již existuje.")
+        logging.info(f"Index '{index_name}' již existuje.")
 
 
 def index_file(
@@ -195,6 +207,7 @@ def index_file(
     variant_field: str,
     model: SentenceTransformer,
     index,
+    passage_prefix: str,
 ) -> int:
     source = xml_path.stem.split("_")[-1]  # "aut_ph" → "ph"
     combine = source == "sk"
@@ -208,13 +221,13 @@ def index_file(
     ):
         batch.append(record)
         if len(batch) >= RECORDS_PER_BATCH:
-            vectors = records_to_vectors(batch, model, source)
+            vectors = records_to_vectors(batch, model, source, passage_prefix)
             index.upsert(vectors=vectors)
             total_vectors += len(vectors)
             batch = []
 
     if batch:
-        vectors = records_to_vectors(batch, model, source)
+        vectors = records_to_vectors(batch, model, source, passage_prefix)
         index.upsert(vectors=vectors)
         total_vectors += len(vectors)
 
@@ -236,10 +249,21 @@ def main() -> None:
         "--variant-field",
         help="Číslo pole variantního hesla (přepíše auto-detekci).",
     )
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        choices=list(MODEL_CONFIGS),
+        help=f"Embedding model (výchozí: {DEFAULT_MODEL}).",
+    )
     args = parser.parse_args()
 
+    model_cfg = MODEL_CONFIGS[args.model]
+    index_name = model_cfg["index_name"]
+    dimension = model_cfg["dimension"]
+    passage_prefix = model_cfg["passage_prefix"]
+
     api_key = os.environ.get("PINECONE_API_KEY")
-    index_host = os.environ.get("PINECONE_INDEX_HOST")
+    index_host = os.environ.get(model_cfg["index_host_env"])
 
     if not api_key:
         sys.exit("Chybí PINECONE_API_KEY")
@@ -263,20 +287,21 @@ def main() -> None:
             sys.exit("Zadejte obě volby: --preferred-field i --variant-field")
         explicit_fields = (args.preferred_field, args.variant_field)
 
+    logging.info(f"Model: {args.model}, index: {index_name}, dim: {dimension}")
     logging.info(f"Soubory ke zpracování: {[p.name for p in paths]}")
 
     pc = Pinecone(api_key=api_key)
-    ensure_index(pc)
-    index = pc.Index(host=index_host) if index_host else pc.Index(INDEX_NAME)
+    ensure_index(pc, index_name, dimension)
+    index = pc.Index(host=index_host) if index_host else pc.Index(index_name)
 
-    model = SentenceTransformer(MODEL_NAME)
-    logging.info(f"Model '{MODEL_NAME}' načten.")
+    model = SentenceTransformer(args.model)
+    logging.info(f"Model '{args.model}' načten.")
 
     grand_total = 0
     for xml_path in paths:
         pf, vf = explicit_fields if explicit_fields else detect_fields(xml_path)
         logging.info(f"{xml_path.name}: pole {pf}/{vf}")
-        count = index_file(xml_path, pf, vf, model, index)
+        count = index_file(xml_path, pf, vf, model, index, passage_prefix)
         logging.info(f"{xml_path.name}: nahráno {count} vektorů")
         grand_total += count
 

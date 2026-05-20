@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PINECONE_INDEX_HOST = process.env.PINECONE_INDEX_HOST!;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY!;
 const HF_API_TOKEN = process.env.HF_TOKEN!;
 
-const ALLOWED_MODELS = new Set(["intfloat/multilingual-e5-small"]);
 const DEFAULT_MODEL = "intfloat/multilingual-e5-small";
+
+const MODEL_CONFIG: Record<string, { indexHostEnvVar: string; queryPrefix: string }> = {
+  "intfloat/multilingual-e5-small": {
+    indexHostEnvVar: "PINECONE_INDEX_HOST",
+    queryPrefix: "query: ",
+  },
+  "Qwen/Qwen3-Embedding-0.6B": {
+    indexHostEnvVar: "PINECONE_INDEX_HOST_QWEN3_06B",
+    queryPrefix: "Instruct: Retrieve semantically similar text.\nQuery: ",
+  },
+};
 
 export interface SearchResult {
   recordId: string;
@@ -19,16 +28,15 @@ export interface SearchResult {
   source: string;
 }
 
-async function embedQuery(query: string, modelId: string): Promise<number[]> {
+async function embedQuery(query: string, modelId: string, queryPrefix: string): Promise<number[]> {
   const url = `https://router.huggingface.co/hf-inference/models/${modelId}/pipeline/feature-extraction`;
-  // e5 modely vyžadují prefix "query: " pro vyhledávací dotazy
   const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${HF_API_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ inputs: `query: ${query}` }),
+    body: JSON.stringify({ inputs: `${queryPrefix}${query}` }),
   });
 
   // Číst jako text nejdříve — HF může vrátit HTML při auth chybách
@@ -72,9 +80,10 @@ async function embedQuery(query: string, modelId: string): Promise<number[]> {
 async function queryPinecone(
   vector: number[],
   topK: number,
+  indexHost: string,
   filter?: Record<string, unknown>
 ): Promise<{ matches: Array<{ score: number; metadata: Record<string, unknown> }> }> {
-  const res = await fetch(`${PINECONE_INDEX_HOST}/query`, {
+  const res = await fetch(`${indexHost}/query`, {
     method: "POST",
     headers: {
       "Api-Key": PINECONE_API_KEY,
@@ -97,7 +106,9 @@ export async function POST(req: NextRequest) {
   const topK: number = Math.min(Math.max(Number(body.topK) || 10, 1), 100);
   const source: string = (body.source ?? "").trim();
   const rawModel: string = (body.model ?? "").trim();
-  const modelId = ALLOWED_MODELS.has(rawModel) ? rawModel : DEFAULT_MODEL;
+  const modelId = rawModel in MODEL_CONFIG ? rawModel : DEFAULT_MODEL;
+  const cfg = MODEL_CONFIG[modelId];
+  const indexHost = process.env[cfg.indexHostEnvVar] ?? "";
 
   if (!query) {
     return NextResponse.json({ error: "Prázdný dotaz" }, { status: 400 });
@@ -106,9 +117,9 @@ export async function POST(req: NextRequest) {
   const filter = source ? { source: { "$eq": source } } : undefined;
 
   try {
-    const vector = await embedQuery(query, modelId);
+    const vector = await embedQuery(query, modelId, cfg.queryPrefix);
     // Načteme více výsledků než potřebujeme, abychom měli zásobu po deduplikaci
-    const raw = await queryPinecone(vector, topK * 3, filter);
+    const raw = await queryPinecone(vector, topK * 3, indexHost, filter);
 
     // Deduplikace: ze shodné autority (stejný preferred term) ponecháme
     // pouze nejlépe skórující shodu, ať už šlo o preferred nebo variant.
