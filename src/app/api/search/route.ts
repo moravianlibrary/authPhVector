@@ -6,14 +6,14 @@ const HF_API_TOKEN = process.env.HF_TOKEN!;
 
 const DEFAULT_MODEL = "intfloat/multilingual-e5-small";
 
-const MODEL_CONFIG: Record<string, { indexHostEnvVar: string; queryPrefix: string }> = {
+const MODEL_CONFIG: Record<string, { indexHostEnvVar: string; queryPrefix: string; provider?: string }> = {
   "intfloat/multilingual-e5-small": {
     indexHostEnvVar: "PINECONE_INDEX_HOST",
     queryPrefix: "query: ",
   },
-  "Qwen/Qwen3-Embedding-0.6B": {
-    indexHostEnvVar: "PINECONE_INDEX_HOST_QWEN3_06B",
-    queryPrefix: "Instruct: Retrieve semantically similar text.\nQuery: ",
+  "intfloat/multilingual-e5-large": {
+    indexHostEnvVar: "PINECONE_INDEX_HOST_LARGE",
+    queryPrefix: "query: ",
   },
 };
 
@@ -29,11 +29,12 @@ export interface SearchResult {
   source: string;
 }
 
-async function embedQuery(query: string, modelId: string, queryPrefix: string): Promise<number[]> {
+async function embedQuery(query: string, modelId: string, queryPrefix: string, provider?: string): Promise<number[]> {
   const hf = new InferenceClient(HF_API_TOKEN);
   const result = await hf.featureExtraction({
     model: modelId,
     inputs: `${queryPrefix}${query}`,
+    ...(provider ? { provider: provider as import("@huggingface/inference").InferenceProviderOrPolicy } : {}),
   });
 
   // featureExtraction vrací number[] nebo number[][]
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
   const filter = source ? { source: { "$eq": source } } : undefined;
 
   try {
-    const vector = await embedQuery(query, modelId, cfg.queryPrefix);
+    const vector = await embedQuery(query, modelId, cfg.queryPrefix, cfg.provider);
     // Načteme více výsledků než potřebujeme, abychom měli zásobu po deduplikaci
     const raw = await queryPinecone(vector, topK * 3, indexHost, filter);
 
@@ -134,8 +135,18 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       );
     }
-    console.error("[/api/search]", e);
-    const detail = (e as Error & { detail?: string }).detail;
+    const eAny = e as Record<string, unknown>;
+    console.error("[/api/search]", {
+      name: eAny.name,
+      message: eAny.message,
+      httpRequest: eAny.httpRequest,
+      httpResponse: eAny.httpResponse,
+      statusCode: eAny.statusCode ?? (eAny.httpResponse as Record<string, unknown>)?.statusCode,
+      body: (eAny.httpResponse as Record<string, unknown>)?.body,
+    });
+    const detail = (e as Error & { detail?: string }).detail
+      ?? e.message
+      ?? JSON.stringify(e, Object.getOwnPropertyNames(e));
     return NextResponse.json(
       { error: detail ?? "Vyhledávání selhalo" },
       { status: 500 }

@@ -44,11 +44,11 @@ MODEL_CONFIGS: dict[str, dict] = {
         "dimension": 384,
         "passage_prefix": "passage: ",
     },
-    "Qwen/Qwen3-Embedding-0.6B": {
-        "index_name": "authph-qwen3-06b",
-        "index_host_env": "PINECONE_INDEX_HOST_QWEN3_06B",
+    "intfloat/multilingual-e5-large": {
+        "index_name": "autph-large",
+        "index_host_env": "PINECONE_INDEX_HOST_LARGE",
         "dimension": 1024,
-        "passage_prefix": "",
+        "passage_prefix": "passage: ",
     },
 }
 DEFAULT_MODEL = "intfloat/multilingual-e5-small"

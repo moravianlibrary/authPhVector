@@ -14,7 +14,7 @@ const EXAMPLES = [
 
 const MODELS: Record<string, string> = {
   "intfloat/multilingual-e5-small": "Základní (intfloat/multilingual-e5-small)",
-  "Qwen/Qwen3-Embedding-0.6B": "Pokročilý (Qwen/Qwen3-Embedding-0.6B)",
+  "intfloat/multilingual-e5-large": "Pokročilý (intfloat/multilingual-e5-large)",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
