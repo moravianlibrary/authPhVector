@@ -280,6 +280,24 @@ body {
   white-space: nowrap;
 }
 
+.source-badge-ph {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.source-badge-ge {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.source-badge-sk {
+  background: #ffedd5;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
 .meta-rows {
   display: flex;
   flex-direction: column;

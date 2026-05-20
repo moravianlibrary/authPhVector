@@ -252,7 +252,7 @@ export default function Home() {
                 </span>
                 <div className="result-actions">
                   {SOURCE_LABELS[r.source] && (
-                    <span className="source-badge">{SOURCE_LABELS[r.source]}</span>
+                    <span className={`source-badge source-badge-${r.source}`}>{SOURCE_LABELS[r.source]}</span>
                   )}
                   <span className={`score ${scoreClass(r.score)}`}>
                     {(r.score * 100).toFixed(1)} %
