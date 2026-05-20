@@ -230,7 +230,7 @@ export default function Home() {
 
       <div className="source-filter">
         <span className="controls-label">Typ záznamu:</span>
-        {(["", "ph", "ge", "sk"] as const).map((src) => (
+        {(["", ...Object.keys(SOURCE_LABELS)] as string[]).map((src) => (
           <button
             key={src}
             className={`source-filter-btn${src ? ` source-filter-btn-${src}` : ""}${sourceFilter === src ? " active" : ""}`}
