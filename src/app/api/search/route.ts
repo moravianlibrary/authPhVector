@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { InferenceClient } from "@huggingface/inference";
 
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY!;
 const HF_API_TOKEN = process.env.HF_TOKEN!;
@@ -29,51 +30,20 @@ export interface SearchResult {
 }
 
 async function embedQuery(query: string, modelId: string, queryPrefix: string): Promise<number[]> {
-  const url = `https://router.huggingface.co/hf-inference/models/${modelId}/pipeline/feature-extraction`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${HF_API_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ inputs: `${queryPrefix}${query}` }),
+  const hf = new InferenceClient(HF_API_TOKEN);
+  const result = await hf.featureExtraction({
+    model: modelId,
+    inputs: `${queryPrefix}${query}`,
   });
 
-  // Číst jako text nejdříve — HF může vrátit HTML při auth chybách
-  const text = await res.text();
-
-  if (res.status === 503) {
-    let estimatedTime = 20;
-    try {
-      const json = JSON.parse(text);
-      estimatedTime = json.estimated_time ?? 20;
-    } catch {}
-    throw Object.assign(new Error("model_loading"), { estimatedTime });
+  // featureExtraction vrací number[] nebo number[][]
+  if (Array.isArray(result)) {
+    return Array.isArray((result as unknown[])[0])
+      ? ((result as number[][])[0])
+      : (result as number[]);
   }
-
-  if (!res.ok) {
-    throw Object.assign(new Error(`hf_error`), {
-      detail: `HuggingFace ${res.status}: ${text.slice(0, 300)}`,
-    });
-  }
-
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw Object.assign(new Error(`hf_error`), {
-      detail: `HuggingFace vrátil neplatný JSON: ${text.slice(0, 200)}`,
-    });
-  }
-
-  // HF Inference vrací [[...384 čísel...]] nebo [...384 čísel...]
-  if (Array.isArray(data)) {
-    return Array.isArray((data as unknown[])[0])
-      ? ((data as number[][])[0])
-      : (data as number[]);
-  }
-  throw Object.assign(new Error(`hf_error`), {
-    detail: `Neočekávaný formát odpovědi: ${JSON.stringify(data).slice(0, 200)}`,
+  throw Object.assign(new Error("hf_error"), {
+    detail: `Neočekávaný formát odpovědi od HuggingFace`,
   });
 }
 
