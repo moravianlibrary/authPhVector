@@ -135,18 +135,8 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       );
     }
-    const eAny = e as Record<string, unknown>;
-    console.error("[/api/search]", {
-      name: eAny.name,
-      message: eAny.message,
-      httpRequest: eAny.httpRequest,
-      httpResponse: eAny.httpResponse,
-      statusCode: eAny.statusCode ?? (eAny.httpResponse as Record<string, unknown>)?.statusCode,
-      body: (eAny.httpResponse as Record<string, unknown>)?.body,
-    });
-    const detail = (e as Error & { detail?: string }).detail
-      ?? e.message
-      ?? JSON.stringify(e, Object.getOwnPropertyNames(e));
+    console.error("[/api/search]", e);
+    const detail = (e as Error & { detail?: string }).detail ?? e.message;
     return NextResponse.json(
       { error: detail ?? "Vyhledávání selhalo" },
       { status: 500 }
