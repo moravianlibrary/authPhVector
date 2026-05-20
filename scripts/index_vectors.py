@@ -3,14 +3,14 @@ Indexovací skript — parsuje MARCXML soubory autorit, generuje embeddingy
 a nahrává je do Pinecone.
 
 Použití:
-  # Zpracuje všechny aut_*.xml v nadřazeném adresáři:
+  # Zpracuje všechny aut_*.xml v data/aut/:
   python index_vectors.py
 
   # Konkrétní soubory:
-  python index_vectors.py aut_ph.xml aut_ge.xml
+  python index_vectors.py data/aut/aut_ph.xml data/aut/aut_ge.xml
 
   # Explicitní pole (přepíše auto-detekci):
-  python index_vectors.py aut_ph.xml --preferred-field 150 --variant-field 450
+  python index_vectors.py data/aut/aut_ph.xml --preferred-field 150 --variant-field 450
 
 Mapování polí (auto-detekce podle názvu souboru):
   aut_ph.xml  →  150 / 450  (předmětová hesla)
@@ -41,6 +41,7 @@ INDEX_NAME = "authph"
 RECORDS_PER_BATCH = 200
 ENCODE_BATCH_SIZE = 64
 E5_PASSAGE = "passage: "
+AUT_DIR = DATA_DIR / "data" / "aut"
 WIKI_DIR = DATA_DIR / "data" / "wiki"
 WIKI_MAX_CHARS = 1000
 
@@ -214,7 +215,7 @@ def main() -> None:
     parser.add_argument(
         "files",
         nargs="*",
-        help="Cesty k XML souborům. Bez argumentu: všechny aut_*.xml v kořeni projektu.",
+        help="Cesty k XML souborům. Bez argumentu: všechny aut_*.xml v data/aut/.",
     )
     parser.add_argument(
         "--preferred-field",
@@ -236,9 +237,9 @@ def main() -> None:
     if args.files:
         paths = [Path(f) for f in args.files]
     else:
-        paths = sorted(DATA_DIR.glob("aut_*.xml"))
+        paths = sorted(AUT_DIR.glob("aut_*.xml"))
         if not paths:
-            sys.exit(f"Nenalezeny žádné soubory aut_*.xml v {DATA_DIR}")
+            sys.exit(f"Nenalezeny žádné soubory aut_*.xml v {AUT_DIR}")
 
     for p in paths:
         if not p.exists():

@@ -3,10 +3,12 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "Downloading data"
-wget "https://aleph.nkp.cz/data/aut_ph.xml.gz" -O aut_ph.xml.gz
-gunzip aut_ph.xml.gz
-wget "https://aleph.nkp.cz/data/aut_ge.xml.gz" -O aut_ge.xml.gz
-gunzip aut_ge.xml.gz
+AUT_DIR="$SCRIPT_DIR/../data/aut"
+mkdir -p "$AUT_DIR"
+wget "https://aleph.nkp.cz/data/aut_ph.xml.gz" -O "$AUT_DIR/aut_ph.xml.gz"
+gunzip "$AUT_DIR/aut_ph.xml.gz"
+wget "https://aleph.nkp.cz/data/aut_ge.xml.gz" -O "$AUT_DIR/aut_ge.xml.gz"
+gunzip "$AUT_DIR/aut_ge.xml.gz"
 
 echo "Downloading Wikipedia dump files..."
 DUMP_DIR="$SCRIPT_DIR/../data/wiki_dump"

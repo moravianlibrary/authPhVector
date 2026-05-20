@@ -3,8 +3,8 @@ Extrahuje Wikipedia stránky z lokálního multistream dumpu cs.wikipedia.org.
 Výstup: data/wiki/{record_id}.txt (čistý text bez wiki markup)
 
 Použití:
-  python fetch_wiki.py                         # všechny aut_*.xml v kořeni projektu
-  python fetch_wiki.py aut_ph.xml aut_ge.xml   # konkrétní soubory
+  python fetch_wiki.py                         # všechny aut_*.xml v data/aut/
+  python fetch_wiki.py data/aut/aut_ph.xml data/aut/aut_ge.xml   # konkrétní soubory
   python fetch_wiki.py --force                 # přepsat existující soubory
   python fetch_wiki.py --dump-dir /jiný/adresář
 
@@ -31,6 +31,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 NS = "http://www.loc.gov/MARC21/slim"
 DATA_DIR = Path(__file__).parent.parent
+AUT_DIR = DATA_DIR / "data" / "aut"
 WIKI_DIR = DATA_DIR / "data" / "wiki"
 INDEX_FILENAME = "cswiki-latest-pages-articles-multistream-index.txt.bz2"
 DUMP_FILENAME = "cswiki-latest-pages-articles-multistream.xml.bz2"
@@ -312,7 +313,7 @@ def main() -> None:
     parser.add_argument(
         "files",
         nargs="*",
-        help="Cesty k MARCXML souborům. Bez argumentu: všechny aut_*.xml v kořeni projektu.",
+        help="Cesty k MARCXML souborům. Bez argumentu: všechny aut_*.xml v data/aut/.",
     )
     parser.add_argument(
         "--force",
@@ -330,9 +331,9 @@ def main() -> None:
     if args.files:
         paths = [Path(f) for f in args.files]
     else:
-        paths = sorted(DATA_DIR.glob("aut_*.xml"))
+        paths = sorted(AUT_DIR.glob("aut_*.xml"))
         if not paths:
-            sys.exit(f"Nenalezeny žádné soubory aut_*.xml v {DATA_DIR}")
+            sys.exit(f"Nenalezeny žádné soubory aut_*.xml v {AUT_DIR}")
 
     for p in paths:
         if not p.exists():
