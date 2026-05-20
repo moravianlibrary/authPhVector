@@ -15,6 +15,7 @@ Použití:
 Mapování polí (auto-detekce podle názvu souboru):
   aut_ph.xml  →  150 / 450  (předmětová hesla)
   aut_ge.xml  →  151 / 451  (geografická jména)
+  aut_sk.xml  →  190 / 490  (konspekt; preferred = "a - x", vector = x)
 
 Vyžaduje:
   export PINECONE_API_KEY=pcsk_...
@@ -49,6 +50,7 @@ WIKI_MAX_CHARS = 1000
 FIELD_MAP: dict[str, tuple[str, str]] = {
     "ph": ("150", "450"),
     "ge": ("151", "451"),
+    "sk": ("190", "490"),
 }
 
 
@@ -63,10 +65,11 @@ def detect_fields(path: Path) -> tuple[str, str]:
     )
 
 
-def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
+def parse_records(xml_path: Path, preferred_field: str, variant_field: str, combine_subfields: bool = False):
     """
     Stream-parsuje MARCXML. Vrací generátor slovníků.
     lxml iterparse + elem.clear() udržuje konstantní paměť.
+    combine_subfields=True: preferred = "$a - $x", vector_text = "$x" (pro sk/190).
     """
     record_tag = f"{{{NS}}}record"
     for _event, elem in etree.iterparse(str(xml_path), events=["end"], tag=record_tag):
@@ -74,6 +77,7 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
         wiki_path = WIKI_DIR / f"{rec_id}.txt"
         wiki_text = wiki_path.read_text(encoding="utf-8")[:WIKI_MAX_CHARS] if wiki_path.exists() else ""
         preferred = None
+        vector_text = ""
         variants = []
 
         mdt = []
@@ -82,9 +86,14 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
         for df in elem.findall(f"{{{NS}}}datafield"):
             tag = df.get("tag")
             if tag == preferred_field:
-                val = df.findtext(f"{{{NS}}}subfield[@code='a']")
-                if val:
-                    preferred = val.strip()
+                a_val = (df.findtext(f"{{{NS}}}subfield[@code='a']") or "").strip()
+                x_val = (df.findtext(f"{{{NS}}}subfield[@code='x']") or "").strip()
+                if combine_subfields and a_val and x_val:
+                    preferred = f"{a_val} - {x_val}"
+                    vector_text = x_val
+                elif a_val or x_val:
+                    preferred = a_val or x_val
+                    vector_text = preferred
             elif tag == variant_field:
                 val = df.findtext(f"{{{NS}}}subfield[@code='a']")
                 if val:
@@ -107,7 +116,7 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str):
         elem.clear()
 
         if preferred:
-            yield {"record_id": rec_id, "preferred": preferred, "variants": variants, "mdt": mdt, "konspekt": konspekt, "authority_url": authority_url, "wiki_text": wiki_text}
+            yield {"record_id": rec_id, "preferred": preferred, "vector_text": vector_text, "variants": variants, "mdt": mdt, "konspekt": konspekt, "authority_url": authority_url, "wiki_text": wiki_text}
 
 
 def build_text(term: str, wiki: str) -> str:
@@ -125,7 +134,7 @@ def records_to_vectors(
 
     for rec in records:
         ids.append(f"{rec['record_id']}_pref")
-        texts.append(build_text(rec["preferred"], rec["wiki_text"]))
+        texts.append(build_text(rec["vector_text"], rec["wiki_text"]))
         metas.append({
             "term": rec["preferred"],
             "preferred": rec["preferred"],
@@ -187,11 +196,12 @@ def index_file(
     index,
 ) -> int:
     source = xml_path.stem.split("_")[-1]  # "aut_ph" → "ph"
+    combine = source == "sk"
     batch: list[dict] = []
     total_vectors = 0
 
     for record in tqdm(
-        parse_records(xml_path, preferred_field, variant_field),
+        parse_records(xml_path, preferred_field, variant_field, combine_subfields=combine),
         desc=xml_path.name,
         unit="rec",
     ):
