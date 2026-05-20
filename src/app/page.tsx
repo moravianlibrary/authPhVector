@@ -16,6 +16,7 @@ const SOURCE_LABELS: Record<string, string> = {
   ph: "Předmětové heslo",
   ge: "Geografický termín",
   sk: "Konspekt",
+  fd: "Formální deskriptor",
 };
 
 function scoreClass(score: number): string {

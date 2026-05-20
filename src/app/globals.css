@@ -194,6 +194,10 @@ body {
 .source-filter-btn-sk:hover,
 .source-filter-btn-sk.active { background: #c2410c; color: #fff; border-color: #c2410c; }
 
+.source-filter-btn-fd { border-color: #e9d5ff; color: #7e22ce; }
+.source-filter-btn-fd:hover,
+.source-filter-btn-fd.active { background: #7e22ce; color: #fff; border-color: #7e22ce; }
+
 .status-bar {
   min-height: 1.5rem;
   margin-bottom: 0.75rem;
@@ -339,6 +343,12 @@ body {
   background: #ffedd5;
   color: #c2410c;
   border-color: #fed7aa;
+}
+
+.source-badge-fd {
+  background: #f3e8ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
 }
 
 .meta-rows {

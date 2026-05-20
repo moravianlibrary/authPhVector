@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "Downloading data"
 AUT_URL_BASE="https://aleph.nkp.cz/data"
-AUT_FILES=(aut_ph.xml.gz aut_ge.xml.gz aut_sk.xml.gz)
+AUT_FILES=(aut_ph.xml.gz aut_ge.xml.gz aut_sk.xml.gz aut_fd.xml.gz)
 AUT_DIR="$SCRIPT_DIR/../data/aut"
 mkdir -p "$AUT_DIR"
 for filename in "${AUT_FILES[@]}"; do
