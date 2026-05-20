@@ -241,17 +241,17 @@ export default function Home() {
             >
               <div className="result-header">
                 <span className="preferred-term">{r.preferredTerm}</span>
+                <button
+                  className="copy-btn"
+                  title="Zkopírovat výraz"
+                  onClick={() => handleCopy(r.preferredTerm, `${r.recordId}-term`)}
+                >
+                  {copiedKey === `${r.recordId}-term` ? "✓" : "⎘"}
+                </button>
                 <div className="result-actions">
                   {SOURCE_LABELS[r.source] && (
                     <span className="source-badge">{SOURCE_LABELS[r.source]}</span>
                   )}
-                  <button
-                    className="copy-btn"
-                    title="Zkopírovat výraz"
-                    onClick={() => handleCopy(r.preferredTerm, `${r.recordId}-term`)}
-                  >
-                    {copiedKey === `${r.recordId}-term` ? "✓" : "⎘"}
-                  </button>
                   <span className={`score ${scoreClass(r.score)}`}>
                     {(r.score * 100).toFixed(1)} %
                   </span>
