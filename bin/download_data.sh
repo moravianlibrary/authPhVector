@@ -16,8 +16,11 @@ done
 echo "Downloading Wikipedia dump files..."
 DUMP_DIR="$SCRIPT_DIR/../data/wiki_dump"
 mkdir -p "$DUMP_DIR"
-while IFS= read -r url; do
-    [ -z "$url" ] && continue
+WIKI_FILES=(
+    "https://dumps.wikimedia.org/cswiki/latest/cswiki-latest-pages-articles-multistream-index.txt.bz2"
+    "https://dumps.wikimedia.org/cswiki/latest/cswiki-latest-pages-articles-multistream.xml.bz2"
+)
+for url in "${WIKI_FILES[@]}"; do
     filename=$(basename "$url")
     dest="$DUMP_DIR/$filename"
     if [ -f "$dest" ]; then
@@ -26,7 +29,7 @@ while IFS= read -r url; do
         echo "  Downloading: $filename"
         wget -q --show-progress "$url" -O "$dest"
     fi
-done < "$DUMP_DIR/urls2.txt"
+done
 
 bash "$SCRIPT_DIR/setup_venv.sh"
 
