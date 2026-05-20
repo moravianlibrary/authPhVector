@@ -151,8 +151,8 @@ export default function Home() {
           <img src="/logo.svg" alt="Logo" className="logo" />
         </button>
         <div>
-          <h1>Hledání synonym</h1>
-          <p>Vektorové vyhledávání v autoritním souboru Národní knihovny ČR</p>
+          <h1>Nový hlodač 😉</h1>
+          <p>Nástroj pro dohledávání autoritních termínů na základě významové podobnosti</p>
         </div>
       </div>
 
