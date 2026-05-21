@@ -261,18 +261,18 @@ def process(
     )
 
     if not work:
-        return 0, skipped, not_found
+        return 0, skipped, 0, not_found
 
     # Průchod 2: seskupit podle offsetu → minimální počet dekompresí
     offset_groups: dict[int, list[tuple[str, str]]] = defaultdict(list)
     for rec_id, title, offset in work:
         offset_groups[offset].append((rec_id, title))
 
-    downloaded = errors = 0
+    downloaded = errors = redirects = 0
     WIKI_DIR.mkdir(parents=True, exist_ok=True)
 
     with open(dump_path, "rb") as dump_file:
-        for offset, items in tqdm(offset_groups.items(), desc="chunky", unit="chunk"):
+        for offset, items in tqdm(sorted(offset_groups.items()), desc="chunky", unit="chunk"):
             try:
                 xml_bytes = read_chunk(dump_file, offset)
                 root = parse_chunk(xml_bytes)
@@ -290,8 +290,8 @@ def process(
                         continue
                     plain = strip_wikitext(wikitext)
                     if plain is None:
-                        logging.warning(f"{rec_id}: {title!r} je přesměrování nebo prázdná")
-                        errors += 1
+                        logging.debug(f"{rec_id}: {title!r} je přesměrování nebo prázdná, přeskakuji")
+                        redirects += 1
                         continue
                     (WIKI_DIR / f"{rec_id}.txt").write_text(plain, encoding="utf-8")
                     downloaded += 1
@@ -299,7 +299,7 @@ def process(
                     logging.error(f"{rec_id}: {title!r} — {exc}")
                     errors += 1
 
-    return downloaded, skipped, errors
+    return downloaded, skipped, redirects, errors
 
 
 # ---------------------------------------------------------------------------
@@ -339,9 +339,9 @@ def main() -> None:
         if not p.exists():
             sys.exit(f"Soubor nenalezen: {p}")
 
-    downloaded, skipped, errors = process(paths, args.dump_dir, args.force)
+    downloaded, skipped, redirects, errors = process(paths, args.dump_dir, args.force)
     logging.info(
-        f"Hotovo. Zapsáno: {downloaded}, přeskočeno: {skipped}, chyb/nenalezeno: {errors}"
+        f"Hotovo. Zapsáno: {downloaded}, přeskočeno: {skipped}, přesměrování/prázdné: {redirects}, chyb/nenalezeno: {errors}"
     )
 
 

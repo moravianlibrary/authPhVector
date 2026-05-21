@@ -9,7 +9,7 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 ---
 
-## [0.3.0] — 2026-05-21
+## [0.4.0] — 2026-05-21
 
 ### 2026-05-21
 
@@ -44,6 +44,42 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 - **`scripts/index_vectors.py`** — `index.upsert()` obaleno do `try/except` s logováním; selhání dávky vypíše čitelnou chybu s názvem souboru a počtem vektorů.  
   Požadavek: selhání upsert (timeout, rate limit) zabíjelo celý run bez indikace, která dávka selhala.  
+  Zdroj: code review
+
+- **`src/app/api/search/route.ts`** — type guard `typeof === "string"` před `.split()` na polích `mdt` a `konspekt` z Pinecone metadat.  
+  Požadavek: Pinecone může vrátit metadata pole jako array; `.split()` na array způsobí TypeError.  
+  Zdroj: code review
+
+- **`src/app/api/debug/route.ts`** — přepsán: odstraněno hardcoded HF URL, přidán `InferenceClient`, testovány env proměnné všech modelů, odstraněno vystavování hodnoty `PINECONE_INDEX_HOST`.  
+  Požadavek: endpoint porušoval ADR 005 (centralized config) a vystavoval Pinecone host URL.  
+  Zdroj: code review
+
+- **`bin/download_data.sh`** — přidán preflight check `command -v wget`.  
+  Požadavek: chybějící wget způsoboval nečitelnou chybu uprostřed smyčky.  
+  Zdroj: code review
+
+- **`bin/setup_venv.sh`** — přidán preflight check `command -v python3`; odstraněno `--quiet` z pip upgrade.  
+  Požadavek: chybějící python3 nebo selhání pip upgradu bylo obtížné diagnostikovat.  
+  Zdroj: code review
+
+- **`bin/run_indexing.sh`** — přidána validace `PINECONE_API_KEY` před spuštěním Pythonu.  
+  Požadavek: chybějící API klíč způsoboval selhání až uvnitř Python skriptu s méně čitelnou chybou.  
+  Zdroj: code review
+
+- **`scripts/index_vectors.py`** — `elem.clear()` doplněno o čištění rodičovského listu; `import torch` přesunut na úroveň modulu; přidáno varování při chybějícím `indexHostEnv`.  
+  Požadavek: chybějící parent cleanup způsoboval paměťový růst při velkých souborech; deferred import selhal po připojení k Pinecone.  
+  Zdroj: code review
+
+- **`scripts/fetch_wiki.py`** — přesměrování/prázdné stránky počítány jako `redirects` (ne `errors`); offset_groups seřazen pro forward-only seeks.  
+  Požadavek: redirect pages nafukovaly chybový čítač; neseřazené offsety způsobovaly zbytečné zpětné seeks.  
+  Zdroj: code review
+
+- **`scripts/parse_redirect_sql.py`** — přidán `BrokenPipeError` handler; přidán filtr `ns == "0"` pro article namespace.  
+  Požadavek: broken pipe způsoboval chybový výstup; non-article záznamy zbytečně plnily redirect tabulku.  
+  Zdroj: code review
+
+- **`docs/`** — přidány chybějící feature docs (`debug-endpoint.md`, `vercel-analytics.md`), ADR (`006-use-debounce.md`, `007-vercel-web-analytics.md`), sekce pro `/api/debug` v `api.md`; doplněno `Požadavek:` do 9 changelog záznamů.  
+  Požadavek: CLAUDE.md vyžaduje dokumentaci každé funkce a architektonického rozhodnutí.  
   Zdroj: code review
 
 ---
@@ -91,6 +127,7 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
   Zdroj: commit `c4c01db`
 
 - **CLAUDE.md** — přestrukturováno pro srozumitelnost; doplněny dokumentační požadavky.  
+  Požadavek: instrukce pro Claude byly nejednoznačné a vedly k nekonzistentní dokumentaci.  
   Zdroj: commit `e81313f`
 
 ---
@@ -140,6 +177,7 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 - **Synchronizace source filtru do URL** (`?source=`).  
   Soubory: `src/app/page.tsx`  
+  Požadavek: sdílení odkazu se zachovaným filtrem záznamu.  
   Zdroj: commit `664dd92`
 
 - **Indexace `aut_sk.xml`** (Konspekt) se složeným preferred termem z polí 190$a–$x.  
@@ -159,6 +197,7 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 - **Přejmenování aplikace** na „Nový hlodač" a aktualizace tagline.  
   Soubory: `src/app/page.tsx`  
+  Požadavek: pracovní název nebyl vhodný pro prezentaci; „Nový hlodač" lépe reflektuje charakter nástroje.  
   Zdroj: commit `6f1bc94`
 
 - **Barevné odlišení source badge** podle typu záznamu (ph/ge/sk).  
@@ -199,10 +238,12 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 - **Logo a favicon**.  
   Soubory: `public/logo.svg`, `src/app/layout.tsx`  
+  Požadavek: aplikace postrádala vizuální identitu.  
   Zdroj: commit `aaf8d1e`
 
 - **Clear button** pro vyhledávací pole.  
   Soubory: `src/app/page.tsx`  
+  Požadavek: rychlé vymazání dotazu bez nutnosti ruční selekce textu.  
   Zdroj: commit `3edf2c0`
 
 - **Výběr počtu výsledků** (10 / 20 / 50 / 100).  
@@ -231,6 +272,7 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
   Zdroj: commity `4788c6f`, `e01cd1f`
 
 - **`bin/setup_venv.sh`** — standalone skript pro setup Python venv.  
+  Požadavek: oddělení setup logiky od `run_indexing.sh` pro možnost samostatného použití.  
   Zdroj: commit `522be05`
 
 - **`.vercelignore`** — velká datová a Python soubory jsou vyloučena z Vercel deploye.  
@@ -240,10 +282,12 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 #### Changed
 - **Karta výsledku** přestrukturována do řádků s popisky (ID, Záznam, MDT, Konspekt).  
   Soubory: `src/app/page.tsx`, `src/app/globals.css`  
+  Požadavek: plochá karta ztěžovala čtení při více polích (MDT, Konspekt).  
   Zdroj: commit `1843f45`
 
 - **Synchronizace dotazu do URL fragmentu** (předchůdce ?q= parametru).  
   Soubory: `src/app/page.tsx`  
+  Požadavek: umožnit sdílení odkazu s dotazem (historické řešení, nahrazeno ?q= parametrem).  
   Zdroj: commit `be26acc`
 
 ---
@@ -271,6 +315,7 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
   Zdroj: commity `671fccc`, `f8839ad`
 
 - **`vercel.json`** — deklarace Next.js frameworku pro Vercel.  
+  Požadavek: bez deklarace frameworku Vercel nesprávně detekoval typ projektu.  
   Zdroj: commit `eecf8de`
 
 - **Podpora více MARCXML souborů** v indexovacím skriptu.  

@@ -29,6 +29,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+import torch
 from lxml import etree
 from sentence_transformers import SentenceTransformer
 from pinecone import Pinecone, ServerlessSpec
@@ -119,6 +120,8 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str, comb
                     authority_url = val.strip()
 
         elem.clear()
+        while elem.getprevious() is not None:
+            del elem.getparent()[0]
 
         if preferred:
             yield {"record_id": rec_id, "preferred": preferred, "vector_text": vector_text, "variants": variants, "mdt": mdt, "konspekt": konspekt, "authority_url": authority_url, "wiki_text": wiki_text}
@@ -303,9 +306,12 @@ def main() -> None:
 
     pc = Pinecone(api_key=api_key)
     ensure_index(pc, index_name, dimension)
-    index = pc.Index(host=index_host) if index_host else pc.Index(index_name)
+    if index_host:
+        index = pc.Index(host=index_host)
+    else:
+        logging.warning("Proměnná %s není nastavena, připojuji se přes název indexu %s", model_cfg["indexHostEnv"], index_name)
+        index = pc.Index(index_name)
 
-    import torch
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = SentenceTransformer(args.model, device=device)
     logging.info(f"Model '{args.model}' načten na zařízení: {device}.")

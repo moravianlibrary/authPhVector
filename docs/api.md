@@ -133,6 +133,49 @@ Pass the model ID in the `model` request field. Unknown model IDs silently fall 
 
 ---
 
+---
+
+## GET /api/debug
+
+Diagnostický endpoint pro ověření dostupnosti externích služeb. Určen pro rychlou produkční diagnostiku bez přístupu k logům.
+
+### Response
+
+#### 200 OK
+
+```json
+{
+  "env": {
+    "PINECONE_API_KEY": true,
+    "HF_TOKEN": true,
+    "PINECONE_INDEX_HOST": true,
+    "PINECONE_INDEX_HOST_LARGE": false,
+    "PINECONE_INDEX_HOST_BGE_M3": false
+  },
+  "hf": {
+    "model": "intfloat/multilingual-e5-small",
+    "ok": true,
+    "dimensions": 384
+  },
+  "pinecone": {
+    "index": "PINECONE_INDEX_HOST",
+    "ok": true,
+    "totalVectorCount": 142853,
+    "error": null
+  }
+}
+```
+
+| Sekce | Popis |
+|-------|-------|
+| `env` | Přítomnost (true/false) každé env proměnné pro všechny nakonfigurované modely. Hodnoty nejsou exponovány. |
+| `hf` | Výsledek testovacího embeddingu přes výchozí model. `ok: true` + `dimensions` při úspěchu, `error` při selhání. |
+| `pinecone` | Výsledek `describe_index_stats` pro index výchozího modelu. `ok: true` + `totalVectorCount` při úspěchu. |
+
+Testuje vždy výchozí model (`intfloat/multilingual-e5-small`). Env proměnné jsou hlášeny pro všechny modely dle `config/models.json`.
+
+---
+
 ## Notes
 
 - **Cold starts:** HuggingFace serverless inference models may take ~20 seconds to load after a period of inactivity. The frontend handles this automatically via the `503 / model_loading` retry mechanism.

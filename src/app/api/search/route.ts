@@ -131,8 +131,8 @@ export async function POST(req: NextRequest) {
         matchedTerm: meta.term,
         isVariant: Boolean(meta.is_variant),
         score: Math.round(match.score * 1000) / 1000,
-        mdt: meta.mdt ? meta.mdt.split("|").filter(Boolean) : [],
-        konspekt: meta.konspekt ? meta.konspekt.split("|").filter(Boolean) : [],
+        mdt: typeof meta.mdt === "string" ? meta.mdt.split("|").filter(Boolean) : [],
+        konspekt: typeof meta.konspekt === "string" ? meta.konspekt.split("|").filter(Boolean) : [],
         authorityUrl: meta.authority_url ?? "",
         source: meta.source ?? "",
       });

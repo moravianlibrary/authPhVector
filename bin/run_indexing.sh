@@ -13,6 +13,8 @@ if [[ -f "$ENV_FILE" ]]; then
   echo "Načteny proměnné z .env.local"
 fi
 
+: "${PINECONE_API_KEY:?Chybí PINECONE_API_KEY v .env.local nebo prostředí}"
+
 bash "$SCRIPT_DIR/setup_venv.sh"
 
 echo "Running indexing script..."

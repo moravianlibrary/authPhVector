@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import { InferenceClient } from "@huggingface/inference";
+import modelsConfig from "../../../../config/models.json";
 
-const HF_MODEL_URL =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-small/pipeline/feature-extraction";
+const MODEL_CONFIG = modelsConfig.models as Record<string, {
+  indexHostEnv: string;
+  queryPrefix: string;
+  provider?: string;
+}>;
 
 export async function GET() {
   const results: Record<string, unknown> = {};
@@ -9,60 +14,63 @@ export async function GET() {
   // 1. Check env vars presence (never expose values)
   results.env = {
     PINECONE_API_KEY: !!process.env.PINECONE_API_KEY,
-    PINECONE_INDEX_HOST: !!process.env.PINECONE_INDEX_HOST,
     HF_TOKEN: !!process.env.HF_TOKEN,
-    PINECONE_INDEX_HOST_VALUE: process.env.PINECONE_INDEX_HOST
-      ? process.env.PINECONE_INDEX_HOST.replace(/\/+$/, "") // strip trailing slash
-      : null,
+    ...Object.fromEntries(
+      Object.entries(MODEL_CONFIG).map(([id, cfg]) => [
+        cfg.indexHostEnv,
+        !!process.env[cfg.indexHostEnv],
+      ])
+    ),
   };
 
-  // 2. Test HuggingFace embedding
+  // 2. Test HuggingFace embedding (default model)
+  const defaultModelId = modelsConfig.defaultModel;
+  const defaultCfg = MODEL_CONFIG[defaultModelId];
   try {
-    const hfRes = await fetch(HF_MODEL_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.HF_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inputs: "query: test" }),
+    const hf = new InferenceClient(process.env.HF_TOKEN);
+    const result = await hf.featureExtraction({
+      model: defaultModelId,
+      inputs: `${defaultCfg.queryPrefix}test`,
+      ...(defaultCfg.provider ? { provider: defaultCfg.provider as import("@huggingface/inference").InferenceProviderOrPolicy } : {}),
     });
-    const hfText = await hfRes.text();
-    let hfBody: unknown;
-    try { hfBody = JSON.parse(hfText); } catch { hfBody = hfText.slice(0, 300); }
+    const flat = Array.isArray(result)
+      ? Array.isArray((result as unknown[])[0])
+        ? (result as number[][])[0]
+        : (result as number[])
+      : null;
     results.hf = {
-      status: hfRes.status,
-      ok: hfRes.ok,
-      responseType: Array.isArray(hfBody)
-        ? Array.isArray((hfBody as unknown[])[0])
-          ? `nested array [${(hfBody as unknown[]).length}][${((hfBody as number[][])[0]).length}]`
-          : `flat array [${(hfBody as unknown[]).length}]`
-        : typeof hfBody,
-      error: hfRes.ok ? null : hfBody,
+      model: defaultModelId,
+      ok: flat !== null,
+      dimensions: flat?.length ?? null,
     };
   } catch (e: unknown) {
-    results.hf = { error: String(e) };
+    results.hf = { model: defaultModelId, ok: false, error: String(e) };
   }
 
-  // 3. Test Pinecone connectivity
-  const host = (process.env.PINECONE_INDEX_HOST ?? "").replace(/\/+$/, "");
-  try {
-    const pcRes = await fetch(`${host}/describe_index_stats`, {
-      method: "POST",
-      headers: {
-        "Api-Key": process.env.PINECONE_API_KEY ?? "",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
-    const pcBody = await pcRes.json();
-    results.pinecone = {
-      status: pcRes.status,
-      ok: pcRes.ok,
-      totalVectorCount: pcBody.totalVectorCount ?? pcBody.total_vector_count ?? null,
-      error: pcRes.ok ? null : pcBody,
-    };
-  } catch (e: unknown) {
-    results.pinecone = { error: String(e) };
+  // 3. Test Pinecone connectivity (default model's index)
+  const host = (process.env[defaultCfg.indexHostEnv] ?? "").replace(/\/+$/, "");
+  if (host) {
+    try {
+      const pcRes = await fetch(`${host}/describe_index_stats`, {
+        method: "POST",
+        headers: {
+          "Api-Key": process.env.PINECONE_API_KEY ?? "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+      const pcBody = await pcRes.json();
+      results.pinecone = {
+        index: defaultCfg.indexHostEnv,
+        ok: pcRes.ok,
+        totalVectorCount: pcBody.totalVectorCount ?? pcBody.total_vector_count ?? null,
+        error: pcRes.ok ? null : pcBody,
+      };
+    } catch (e: unknown) {
+      results.pinecone = { index: defaultCfg.indexHostEnv, ok: false, error: String(e) };
+    }
+  } else {
+    results.pinecone = { index: defaultCfg.indexHostEnv, ok: false, error: `${defaultCfg.indexHostEnv} není nastavena` };
   }
 
   return NextResponse.json(results);
