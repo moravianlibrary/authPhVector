@@ -29,4 +29,5 @@ Goal: Tool to help researchers and librarians find relevant records in the Náro
 - The record includes: date, file, description of the change, the request it responds to, and the source of the request.
 - The changelog entries are sorted by date, latest first.
 - Use format "Keep a Changelog"
+- Při každé aktualizaci docs/log/CHANGELOG.md také aktualizuj CHANGELOG.md v kořeni repozitáře. Tento soubor je zobrazován uživatelům přímo v aplikaci — piš jej jednoduchou češtinou bez odkazů na jiné soubory, bez názvů souborů a commit hashů.
 
