@@ -15,6 +15,10 @@ const MODEL_CONFIG: Record<string, { indexHostEnvVar: string; queryPrefix: strin
     indexHostEnvVar: "PINECONE_INDEX_HOST_LARGE",
     queryPrefix: "query: ",
   },
+  "BAAI/bge-m3": {
+    indexHostEnvVar: "PINECONE_INDEX_HOST_BGE_M3",
+    queryPrefix: "",
+  },
 };
 
 export interface SearchResult {

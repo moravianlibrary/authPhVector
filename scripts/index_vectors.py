@@ -50,6 +50,12 @@ MODEL_CONFIGS: dict[str, dict] = {
         "dimension": 1024,
         "passage_prefix": "passage: ",
     },
+    "BAAI/bge-m3": {
+        "index_name": "autph-bge-m3",
+        "index_host_env": "PINECONE_INDEX_HOST_BGE_M3",
+        "dimension": 1024,
+        "passage_prefix": "",
+    },
 }
 DEFAULT_MODEL = "intfloat/multilingual-e5-small"
 RECORDS_PER_BATCH = 200
