@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { InferenceClient } from "@huggingface/inference";
+import modelsConfig from "../../../../config/models.json";
 
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY!;
 const HF_API_TOKEN = process.env.HF_TOKEN!;
 
-const DEFAULT_MODEL = "intfloat/multilingual-e5-small";
-
-const MODEL_CONFIG: Record<string, { indexHostEnvVar: string; queryPrefix: string; provider?: string }> = {
-  "intfloat/multilingual-e5-small": {
-    indexHostEnvVar: "PINECONE_INDEX_HOST",
-    queryPrefix: "query: ",
-  },
-  "intfloat/multilingual-e5-large": {
-    indexHostEnvVar: "PINECONE_INDEX_HOST_LARGE",
-    queryPrefix: "query: ",
-  },
-  "BAAI/bge-m3": {
-    indexHostEnvVar: "PINECONE_INDEX_HOST_BGE_M3",
-    queryPrefix: "",
-  },
-};
+const DEFAULT_MODEL = modelsConfig.defaultModel;
+const MODEL_CONFIG = modelsConfig.models as Record<string, {
+  indexHostEnv: string;
+  queryPrefix: string;
+  passagePrefix: string;
+  provider?: string;
+}>;
 
 export interface SearchResult {
   recordId: string;
@@ -83,7 +75,7 @@ export async function POST(req: NextRequest) {
   const rawModel: string = (body.model ?? "").trim();
   const modelId = rawModel in MODEL_CONFIG ? rawModel : DEFAULT_MODEL;
   const cfg = MODEL_CONFIG[modelId];
-  const indexHost = process.env[cfg.indexHostEnvVar] ?? "";
+  const indexHost = process.env[cfg.indexHostEnv] ?? "";
 
   if (!query) {
     return NextResponse.json({ error: "Prázdný dotaz" }, { status: 400 });

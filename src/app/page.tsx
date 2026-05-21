@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import type { SearchResult } from "./api/search/route";
+import modelsConfig from "../../config/models.json";
 
 const EXAMPLES = [
   "kulturní změna",
@@ -12,11 +13,9 @@ const EXAMPLES = [
   "počítačové sítě",
 ];
 
-const MODELS: Record<string, string> = {
-  "intfloat/multilingual-e5-small": "Základní (intfloat/multilingual-e5-small)",
-  "intfloat/multilingual-e5-large": "Pokročilý (intfloat/multilingual-e5-large)",
-  "BAAI/bge-m3": "Experimentální (BAAI/bge-m3)",
-};
+const MODELS: Record<string, string> = Object.fromEntries(
+  Object.entries(modelsConfig.models).map(([id, cfg]) => [id, cfg.label])
+);
 
 const SOURCE_LABELS: Record<string, string> = {
   ph: "Předmětové heslo",
@@ -35,7 +34,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState<number>(10);
   const [sourceFilter, setSourceFilter] = useState<string>("");
-  const [model, setModel] = useState<string>("intfloat/multilingual-e5-small");
+  const [model, setModel] = useState<string>(modelsConfig.defaultModel);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +48,7 @@ export default function Home() {
     setTimeout(() => setCopiedKey(null), 1500);
   }
 
-  const doSearch = useCallback(async (q: string, k: number, src = "", mdl = "intfloat/multilingual-e5-small") => {
+  const doSearch = useCallback(async (q: string, k: number, src = "", mdl = modelsConfig.defaultModel) => {
     if (!q.trim()) {
       setResults([]);
       setError(null);
@@ -106,13 +105,13 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     const src = params.get("source") ?? "";
     const urlModel = params.get("model") ?? "";
-    const initModel = urlModel in MODELS ? urlModel : "intfloat/multilingual-e5-small";
+    const initModel = urlModel in MODELS ? urlModel : modelsConfig.defaultModel;
     const qParam = params.get("q") ?? "";
     const hash = decodeURIComponent(window.location.hash.slice(1));
     const initQuery = qParam || hash;
 
     if (src) setSourceFilter(src);
-    if (initModel !== "intfloat/multilingual-e5-small") setModel(initModel);
+    if (initModel !== modelsConfig.defaultModel) setModel(initModel);
     if (initQuery) {
       setQuery(initQuery);
       if (!qParam && hash) {

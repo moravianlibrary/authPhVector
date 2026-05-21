@@ -24,6 +24,7 @@ Vyžaduje:
 """
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -37,27 +38,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 NS = "http://www.loc.gov/MARC21/slim"
 DATA_DIR = Path(__file__).parent.parent
-MODEL_CONFIGS: dict[str, dict] = {
-    "intfloat/multilingual-e5-small": {
-        "index_name": "authph",
-        "index_host_env": "PINECONE_INDEX_HOST",
-        "dimension": 384,
-        "passage_prefix": "passage: ",
-    },
-    "intfloat/multilingual-e5-large": {
-        "index_name": "autph-large",
-        "index_host_env": "PINECONE_INDEX_HOST_LARGE",
-        "dimension": 1024,
-        "passage_prefix": "passage: ",
-    },
-    "BAAI/bge-m3": {
-        "index_name": "autph-bge-m3",
-        "index_host_env": "PINECONE_INDEX_HOST_BGE_M3",
-        "dimension": 1024,
-        "passage_prefix": "",
-    },
-}
-DEFAULT_MODEL = "intfloat/multilingual-e5-small"
+_models_cfg = json.loads((DATA_DIR / "config" / "models.json").read_text())
+MODEL_CONFIGS: dict[str, dict] = _models_cfg["models"]
+DEFAULT_MODEL: str = _models_cfg["defaultModel"]
 RECORDS_PER_BATCH = 200
 ENCODE_BATCH_SIZE = 64
 AUT_DIR = DATA_DIR / "data" / "aut"
@@ -275,12 +258,12 @@ def main() -> None:
     args = parser.parse_args()
 
     model_cfg = MODEL_CONFIGS[args.model]
-    index_name = model_cfg["index_name"]
+    index_name = model_cfg["indexName"]
     dimension = model_cfg["dimension"]
-    passage_prefix = model_cfg["passage_prefix"]
+    passage_prefix = model_cfg["passagePrefix"]
 
     api_key = os.environ.get("PINECONE_API_KEY")
-    index_host = os.environ.get(model_cfg["index_host_env"])
+    index_host = os.environ.get(model_cfg["indexHostEnv"])
 
     if not api_key:
         sys.exit("Chybí PINECONE_API_KEY")

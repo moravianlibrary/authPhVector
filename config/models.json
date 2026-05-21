@@ -1,0 +1,41 @@
+{
+  "_docs": {
+    "about": "Centrální konfigurace embedding modelů pro indexaci i vyhledávání. Tento soubor čte jak Python skript scripts/index_vectors.py (stdlib json), tak Next.js aplikace (nativní import JSON). Při přidání nového modelu stačí editovat pouze tento soubor.",
+    "defaultModel": "ID výchozího embedding modelu (musí být klíčem v objektu 'models')",
+    "models.<id>": "Klíč je HuggingFace ID modelu, např. 'intfloat/multilingual-e5-small'",
+    "models.<id>.label": "Zobrazovaný název modelu v rozbalovacím menu uživatelského rozhraní",
+    "models.<id>.indexName": "Název Pinecone indexu přiřazeného tomuto modelu. Index musí mít dimenzi odpovídající poli 'dimension'.",
+    "models.<id>.indexHostEnv": "Název proměnné prostředí (env var) obsahující host URL Pinecone indexu, např. 'https://xxx.svc.pinecone.io'. Proměnná se nastavuje v .env.local (lokálně) nebo ve Vercel Environment Variables (produkce).",
+    "models.<id>.dimension": "Počet dimenzí vektorů generovaných tímto modelem. Musí přesně odpovídat dimenzi vytvořeného Pinecone indexu.",
+    "models.<id>.queryPrefix": "Textový prefix přidaný před vyhledávací dotaz uživatele těsně před generováním embeddingu. E5 modely vyžadují 'query: ', BGE-M3 a novější modely prefix nepotřebují.",
+    "models.<id>.passagePrefix": "Textový prefix přidaný před indexovaný text (termíny z MARC záznamů, wiki texty) při generování embeddingů v scripts/index_vectors.py. E5 modely vyžadují 'passage: ', ostatní modely prefix nepotřebují.",
+    "models.<id>.provider": "(Volitelné) HuggingFace inference provider pro tento model, např. 'together', 'nebius'. Pokud není uvedeno, použije se 'auto' — HuggingFace router vybere prvního dostupného providera dle nastavení účtu."
+  },
+  "defaultModel": "intfloat/multilingual-e5-small",
+  "models": {
+    "intfloat/multilingual-e5-small": {
+      "label": "Základní (intfloat/multilingual-e5-small)",
+      "indexName": "authph",
+      "indexHostEnv": "PINECONE_INDEX_HOST",
+      "dimension": 384,
+      "queryPrefix": "query: ",
+      "passagePrefix": "passage: "
+    },
+    "intfloat/multilingual-e5-large": {
+      "label": "Pokročilý (intfloat/multilingual-e5-large)",
+      "indexName": "autph-large",
+      "indexHostEnv": "PINECONE_INDEX_HOST_LARGE",
+      "dimension": 1024,
+      "queryPrefix": "query: ",
+      "passagePrefix": "passage: "
+    },
+    "BAAI/bge-m3": {
+      "label": "Experimentální (BAAI/bge-m3)",
+      "indexName": "autph-bge-m3",
+      "indexHostEnv": "PINECONE_INDEX_HOST_BGE_M3",
+      "dimension": 1024,
+      "queryPrefix": "",
+      "passagePrefix": ""
+    }
+  }
+}
