@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { ReactNode } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import type { SearchResult } from "./api/search/route";
 import modelsConfig from "../../config/models.json";
+import pkg from "../../package.json";
 
 const EXAMPLES = [
   "kulturní změna",
@@ -30,6 +32,56 @@ function scoreClass(score: number): string {
   return "score-low";
 }
 
+function parseBold(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
+function ChangelogContent({ text }: { text: string }) {
+  if (!text) return <p>Načítám…</p>;
+
+  // Přeskočit preamble před první ## sekcí (název souboru, metadata)
+  const firstSection = text.indexOf("\n## ");
+  const body = firstSection >= 0 ? text.slice(firstSection + 1) : text;
+
+  const nodes: ReactNode[] = [];
+  let listItems: ReactNode[] = [];
+
+  const flushList = (key: number) => {
+    if (listItems.length > 0) {
+      nodes.push(<ul key={`ul-${key}`}>{listItems}</ul>);
+      listItems = [];
+    }
+  };
+
+  body.split("\n").forEach((line, i) => {
+    if (line.startsWith("#### ")) {
+      flushList(i);
+      nodes.push(<h4 key={i}>{parseBold(line.slice(5))}</h4>);
+    } else if (line.startsWith("### ")) {
+      flushList(i);
+      nodes.push(<h3 key={i}>{parseBold(line.slice(4))}</h3>);
+    } else if (line.startsWith("## ")) {
+      flushList(i);
+      nodes.push(<h2 key={i}>{parseBold(line.slice(3))}</h2>);
+    } else if (line === "---") {
+      flushList(i);
+      nodes.push(<hr key={i} />);
+    } else if (line.startsWith("- ")) {
+      listItems.push(<li key={i}>{parseBold(line.slice(2))}</li>);
+    } else if (line.trim() !== "") {
+      flushList(i);
+      nodes.push(<p key={i}>{parseBold(line)}</p>);
+    }
+  });
+  flushList(body.length);
+
+  return <>{nodes}</>;
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState<number>(10);
@@ -40,6 +92,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [retryMsg, setRetryMsg] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const [changelogContent, setChangelogContent] = useState("");
   const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function handleCopy(text: string, key: string) {
@@ -103,6 +157,14 @@ export default function Home() {
       if (retryTimeout.current) clearTimeout(retryTimeout.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (changelogOpen && !changelogContent) {
+      fetch("/api/changelog")
+        .then(r => r.json())
+        .then(d => setChangelogContent(d.content ?? ""));
+    }
+  }, [changelogOpen, changelogContent]);
 
   // Načíst výraz, filtr a model z URL při prvním otevření stránky
   useEffect(() => {
@@ -181,7 +243,12 @@ export default function Home() {
           <img src="/logo.svg" alt="Logo" className="logo" />
         </button>
         <div>
-          <h1>Nový hlodač 😉</h1>
+          <div className="header-title-row">
+            <h1>Nový hlodač 😉</h1>
+            <button className="version-badge" onClick={() => setChangelogOpen(true)}>
+              v{pkg.version}
+            </button>
+          </div>
           <p>Nástroj pro dohledávání autoritních termínů na základě významové podobnosti</p>
         </div>
       </div>
@@ -403,6 +470,19 @@ export default function Home() {
             </li>
           ))}
         </ul>
+      )}
+      {changelogOpen && (
+        <div className="modal-overlay" onClick={() => setChangelogOpen(false)}>
+          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Changelog</h2>
+              <button className="modal-close" aria-label="Zavřít" onClick={() => setChangelogOpen(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <ChangelogContent text={changelogContent} />
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
