@@ -78,7 +78,7 @@ def detect_fields(path: Path) -> tuple[str, str]:
     )
 
 
-def parse_records(xml_path: Path, preferred_field: str, variant_field: str, combine_subfields: bool = False):
+def parse_records(xml_path: Path, preferred_field: str, variant_field: str, combine_subfields: bool = False, no_wiki: bool = False):
     """
     Stream-parsuje MARCXML. Vrací generátor slovníků.
     lxml iterparse + elem.clear() udržuje konstantní paměť.
@@ -88,7 +88,7 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str, comb
     for _event, elem in etree.iterparse(str(xml_path), events=["end"], tag=record_tag):
         rec_id = elem.findtext(f"{{{NS}}}controlfield[@tag='001']") or ""
         wiki_path = WIKI_DIR / f"{rec_id}.txt"
-        wiki_text = wiki_path.read_text(encoding="utf-8")[:WIKI_MAX_CHARS] if wiki_path.exists() else ""
+        wiki_text = "" if no_wiki else (wiki_path.read_text(encoding="utf-8")[:WIKI_MAX_CHARS] if wiki_path.exists() else "")
         preferred = None
         vector_text = ""
         variants = []
@@ -208,6 +208,7 @@ def index_file(
     model: SentenceTransformer,
     index,
     passage_prefix: str,
+    no_wiki: bool = False,
 ) -> int:
     source = xml_path.stem.split("_")[-1]  # "aut_ph" → "ph"
     combine = source == "sk"
@@ -215,7 +216,7 @@ def index_file(
     total_vectors = 0
 
     for record in tqdm(
-        parse_records(xml_path, preferred_field, variant_field, combine_subfields=combine),
+        parse_records(xml_path, preferred_field, variant_field, combine_subfields=combine, no_wiki=no_wiki),
         desc=xml_path.name,
         unit="rec",
     ):
@@ -259,6 +260,11 @@ def main() -> None:
         "--device",
         default=None,
         help="Zařízení pro výpočet embeddingů (např. cuda, cpu). Výchozí: cuda pokud dostupné, jinak cpu.",
+    )
+    parser.add_argument(
+        "--no-wiki",
+        action="store_true",
+        help="Indexovat bez Wikipedia dat (rychlejší, jen MARC záznamy).",
     )
     args = parser.parse_args()
 
@@ -308,7 +314,7 @@ def main() -> None:
     for xml_path in paths:
         pf, vf = explicit_fields if explicit_fields else detect_fields(xml_path)
         logging.info(f"{xml_path.name}: pole {pf}/{vf}")
-        count = index_file(xml_path, pf, vf, model, index, passage_prefix)
+        count = index_file(xml_path, pf, vf, model, index, passage_prefix, no_wiki=args.no_wiki)
         logging.info(f"{xml_path.name}: nahráno {count} vektorů")
         grand_total += count
 
