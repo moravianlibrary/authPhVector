@@ -24,6 +24,7 @@ Vyžaduje:
 """
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -37,11 +38,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 NS = "http://www.loc.gov/MARC21/slim"
 DATA_DIR = Path(__file__).parent.parent
-MODEL_NAME = "intfloat/multilingual-e5-small"
-INDEX_NAME = "authph"
+_models_cfg = json.loads((DATA_DIR / "config" / "models.json").read_text())
+MODEL_CONFIGS: dict[str, dict] = _models_cfg["models"]
+DEFAULT_MODEL: str = _models_cfg["defaultModel"]
 RECORDS_PER_BATCH = 200
 ENCODE_BATCH_SIZE = 64
-E5_PASSAGE = "passage: "
 AUT_DIR = DATA_DIR / "data" / "aut"
 WIKI_DIR = DATA_DIR / "data" / "wiki"
 WIKI_MAX_CHARS = 1000
@@ -66,7 +67,7 @@ def detect_fields(path: Path) -> tuple[str, str]:
     )
 
 
-def parse_records(xml_path: Path, preferred_field: str, variant_field: str, combine_subfields: bool = False):
+def parse_records(xml_path: Path, preferred_field: str, variant_field: str, combine_subfields: bool = False, no_wiki: bool = False):
     """
     Stream-parsuje MARCXML. Vrací generátor slovníků.
     lxml iterparse + elem.clear() udržuje konstantní paměť.
@@ -76,7 +77,7 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str, comb
     for _event, elem in etree.iterparse(str(xml_path), events=["end"], tag=record_tag):
         rec_id = elem.findtext(f"{{{NS}}}controlfield[@tag='001']") or ""
         wiki_path = WIKI_DIR / f"{rec_id}.txt"
-        wiki_text = wiki_path.read_text(encoding="utf-8")[:WIKI_MAX_CHARS] if wiki_path.exists() else ""
+        wiki_text = "" if no_wiki else (wiki_path.read_text(encoding="utf-8")[:WIKI_MAX_CHARS] if wiki_path.exists() else "")
         preferred = None
         vector_text = ""
         variants = []
@@ -120,12 +121,12 @@ def parse_records(xml_path: Path, preferred_field: str, variant_field: str, comb
             yield {"record_id": rec_id, "preferred": preferred, "vector_text": vector_text, "variants": variants, "mdt": mdt, "konspekt": konspekt, "authority_url": authority_url, "wiki_text": wiki_text}
 
 
-def build_text(term: str, wiki: str) -> str:
-    return f"{E5_PASSAGE}{term}\n\n{wiki}" if wiki else E5_PASSAGE + term
+def build_text(term: str, wiki: str, passage_prefix: str) -> str:
+    return f"{passage_prefix}{term}\n\n{wiki}" if wiki else f"{passage_prefix}{term}"
 
 
 def records_to_vectors(
-    records: list[dict], model: SentenceTransformer, source: str
+    records: list[dict], model: SentenceTransformer, source: str, passage_prefix: str
 ) -> list[dict]:
     """
     Převede dávku záznamů na vektory pro Pinecone upsert.
@@ -135,7 +136,7 @@ def records_to_vectors(
 
     for rec in records:
         ids.append(f"{rec['record_id']}_pref")
-        texts.append(build_text(rec["vector_text"], rec["wiki_text"]))
+        texts.append(build_text(rec["vector_text"], rec["wiki_text"], passage_prefix))
         metas.append({
             "term": rec["preferred"],
             "preferred": rec["preferred"],
@@ -149,7 +150,7 @@ def records_to_vectors(
 
         for i, variant in enumerate(rec["variants"]):
             ids.append(f"{rec['record_id']}_var_{i}")
-            texts.append(build_text(variant, rec["wiki_text"]))
+            texts.append(build_text(variant, rec["wiki_text"], passage_prefix))
             metas.append({
                 "term": variant,
                 "preferred": rec["preferred"],
@@ -174,19 +175,19 @@ def records_to_vectors(
     ]
 
 
-def ensure_index(pc: Pinecone) -> None:
+def ensure_index(pc: Pinecone, index_name: str, dimension: int) -> None:
     existing = [idx.name for idx in pc.list_indexes()]
-    if INDEX_NAME not in existing:
-        logging.info(f"Vytvářím Pinecone index '{INDEX_NAME}'...")
+    if index_name not in existing:
+        logging.info(f"Vytvářím Pinecone index '{index_name}'...")
         pc.create_index(
-            name=INDEX_NAME,
-            dimension=384,
+            name=index_name,
+            dimension=dimension,
             metric="cosine",
             spec=ServerlessSpec(cloud="aws", region="us-east-1"),
         )
         logging.info("Index vytvořen.")
     else:
-        logging.info(f"Index '{INDEX_NAME}' již existuje.")
+        logging.info(f"Index '{index_name}' již existuje.")
 
 
 def index_file(
@@ -195,6 +196,8 @@ def index_file(
     variant_field: str,
     model: SentenceTransformer,
     index,
+    passage_prefix: str,
+    no_wiki: bool = False,
 ) -> int:
     source = xml_path.stem.split("_")[-1]  # "aut_ph" → "ph"
     combine = source == "sk"
@@ -202,19 +205,19 @@ def index_file(
     total_vectors = 0
 
     for record in tqdm(
-        parse_records(xml_path, preferred_field, variant_field, combine_subfields=combine),
+        parse_records(xml_path, preferred_field, variant_field, combine_subfields=combine, no_wiki=no_wiki),
         desc=xml_path.name,
         unit="rec",
     ):
         batch.append(record)
         if len(batch) >= RECORDS_PER_BATCH:
-            vectors = records_to_vectors(batch, model, source)
+            vectors = records_to_vectors(batch, model, source, passage_prefix)
             index.upsert(vectors=vectors)
             total_vectors += len(vectors)
             batch = []
 
     if batch:
-        vectors = records_to_vectors(batch, model, source)
+        vectors = records_to_vectors(batch, model, source, passage_prefix)
         index.upsert(vectors=vectors)
         total_vectors += len(vectors)
 
@@ -236,10 +239,31 @@ def main() -> None:
         "--variant-field",
         help="Číslo pole variantního hesla (přepíše auto-detekci).",
     )
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        choices=list(MODEL_CONFIGS),
+        help=f"Embedding model (výchozí: {DEFAULT_MODEL}).",
+    )
+    parser.add_argument(
+        "--device",
+        default=None,
+        help="Zařízení pro výpočet embeddingů (např. cuda, cpu). Výchozí: cuda pokud dostupné, jinak cpu.",
+    )
+    parser.add_argument(
+        "--no-wiki",
+        action="store_true",
+        help="Indexovat bez Wikipedia dat (rychlejší, jen MARC záznamy).",
+    )
     args = parser.parse_args()
 
+    model_cfg = MODEL_CONFIGS[args.model]
+    index_name = model_cfg["indexName"]
+    dimension = model_cfg["dimension"]
+    passage_prefix = model_cfg["passagePrefix"]
+
     api_key = os.environ.get("PINECONE_API_KEY")
-    index_host = os.environ.get("PINECONE_INDEX_HOST")
+    index_host = os.environ.get(model_cfg["indexHostEnv"])
 
     if not api_key:
         sys.exit("Chybí PINECONE_API_KEY")
@@ -263,20 +287,23 @@ def main() -> None:
             sys.exit("Zadejte obě volby: --preferred-field i --variant-field")
         explicit_fields = (args.preferred_field, args.variant_field)
 
+    logging.info(f"Model: {args.model}, index: {index_name}, dim: {dimension}")
     logging.info(f"Soubory ke zpracování: {[p.name for p in paths]}")
 
     pc = Pinecone(api_key=api_key)
-    ensure_index(pc)
-    index = pc.Index(host=index_host) if index_host else pc.Index(INDEX_NAME)
+    ensure_index(pc, index_name, dimension)
+    index = pc.Index(host=index_host) if index_host else pc.Index(index_name)
 
-    model = SentenceTransformer(MODEL_NAME)
-    logging.info(f"Model '{MODEL_NAME}' načten.")
+    import torch
+    device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
+    model = SentenceTransformer(args.model, device=device)
+    logging.info(f"Model '{args.model}' načten na zařízení: {device}.")
 
     grand_total = 0
     for xml_path in paths:
         pf, vf = explicit_fields if explicit_fields else detect_fields(xml_path)
         logging.info(f"{xml_path.name}: pole {pf}/{vf}")
-        count = index_file(xml_path, pf, vf, model, index)
+        count = index_file(xml_path, pf, vf, model, index, passage_prefix, no_wiki=args.no_wiki)
         logging.info(f"{xml_path.name}: nahráno {count} vektorů")
         grand_total += count
 

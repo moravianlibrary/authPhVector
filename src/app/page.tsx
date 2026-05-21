@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import type { SearchResult } from "./api/search/route";
+import modelsConfig from "../../config/models.json";
 
 const EXAMPLES = [
   "kulturní změna",
@@ -11,6 +12,10 @@ const EXAMPLES = [
   "ochrana životního prostředí",
   "počítačové sítě",
 ];
+
+const MODELS: Record<string, string> = Object.fromEntries(
+  Object.entries(modelsConfig.models).map(([id, cfg]) => [id, cfg.label])
+);
 
 const SOURCE_LABELS: Record<string, string> = {
   ph: "Předmětové heslo",
@@ -29,6 +34,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState<number>(10);
   const [sourceFilter, setSourceFilter] = useState<string>("");
+  const [model, setModel] = useState<string>(modelsConfig.defaultModel);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +48,7 @@ export default function Home() {
     setTimeout(() => setCopiedKey(null), 1500);
   }
 
-  const doSearch = useCallback(async (q: string, k: number, src = "") => {
+  const doSearch = useCallback(async (q: string, k: number, src = "", mdl = modelsConfig.defaultModel) => {
     if (!q.trim()) {
       setResults([]);
       setError(null);
@@ -58,7 +64,7 @@ export default function Home() {
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, topK: k, source: src }),
+        body: JSON.stringify({ query: q, topK: k, source: src, model: mdl }),
       });
 
       const data = await res.json();
@@ -67,7 +73,7 @@ export default function Home() {
         const wait: number = data.retryAfter ?? 20;
         setRetryMsg(`Embedding model se spouští, zkusím znovu za ${wait} s…`);
         setLoading(false);
-        retryTimeout.current = setTimeout(() => doSearch(q, k, src), wait * 1000);
+        retryTimeout.current = setTimeout(() => doSearch(q, k, src, mdl), wait * 1000);
         return;
       }
 
@@ -94,26 +100,39 @@ export default function Home() {
     };
   }, []);
 
-  // Načíst výraz a filtr z URL při prvním otevření stránky
+  // Načíst výraz, filtr a model z URL při prvním otevření stránky
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const src = params.get("source") ?? "";
+    const urlModel = params.get("model") ?? "";
+    const initModel = urlModel in MODELS ? urlModel : modelsConfig.defaultModel;
+    const qParam = params.get("q") ?? "";
     const hash = decodeURIComponent(window.location.hash.slice(1));
-    const src = new URLSearchParams(window.location.search).get("source") ?? "";
+    const initQuery = qParam || hash;
+
     if (src) setSourceFilter(src);
-    if (hash) {
-      setQuery(hash);
-      doSearch(hash, topK, src);
+    if (initModel !== modelsConfig.defaultModel) setModel(initModel);
+    if (initQuery) {
+      setQuery(initQuery);
+      if (!qParam && hash) {
+        params.set("q", hash);
+        window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+      }
+      doSearch(initQuery, topK, src, initModel);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Synchronizovat URL fragment s aktuálním výrazem (zachovat search params)
+  // Synchronizovat dotaz do URL search param ?q=
   useEffect(() => {
-    const search = window.location.search;
+    const params = new URLSearchParams(window.location.search);
     if (query) {
-      window.history.replaceState(null, "", `${search}#${encodeURIComponent(query)}`);
+      params.set("q", query);
     } else {
-      window.history.replaceState(null, "", window.location.pathname + search);
+      params.delete("q");
     }
+    const search = params.toString() ? `?${params.toString()}` : "";
+    window.history.replaceState(null, "", `${window.location.pathname}${search}`);
   }, [query]);
 
   // Synchronizovat source filtr do URL search params
@@ -128,25 +147,38 @@ export default function Home() {
     window.history.replaceState(null, "", `${window.location.pathname}${search}${window.location.hash}`);
   }, [sourceFilter]);
 
+  // Synchronizovat model do URL search params
   useEffect(() => {
-    if (query.trim()) doSearch(query, topK, sourceFilter);
+    const params = new URLSearchParams(window.location.search);
+    params.set("model", model);
+    const search = `?${params.toString()}`;
+    window.history.replaceState(null, "", `${window.location.pathname}${search}${window.location.hash}`);
+  }, [model]);
+
+  useEffect(() => {
+    if (query.trim()) doSearch(query, topK, sourceFilter, model);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topK]);
 
   useEffect(() => {
-    if (query.trim()) doSearch(query, topK, sourceFilter);
+    if (query.trim()) doSearch(query, topK, sourceFilter, model);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceFilter]);
+
+  useEffect(() => {
+    if (query.trim()) doSearch(query, topK, sourceFilter, model);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setQuery(val);
-    debouncedSearch(val, topK, sourceFilter);
+    debouncedSearch(val, topK, sourceFilter, model);
   }
 
   function handleExample(term: string) {
     setQuery(term);
-    doSearch(term, topK, sourceFilter);
+    doSearch(term, topK, sourceFilter, model);
   }
 
   function handleReset() {
@@ -215,6 +247,17 @@ export default function Home() {
       </div>
 
       <div className="search-controls">
+        <label htmlFor="model-select" className="controls-label">Model:</label>
+        <select
+          id="model-select"
+          className="topk-select"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+        >
+          {Object.entries(MODELS).map(([id, label]) => (
+            <option key={id} value={id}>{label}</option>
+          ))}
+        </select>
         <label htmlFor="topk-select" className="controls-label">Počet výsledků:</label>
         <select
           id="topk-select"

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { InferenceClient } from "@huggingface/inference";
+import modelsConfig from "../../../../config/models.json";
 
-const PINECONE_INDEX_HOST = process.env.PINECONE_INDEX_HOST!;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY!;
 const HF_API_TOKEN = process.env.HF_TOKEN!;
-// Nový HF Inference Router endpoint (2025)
-const HF_MODEL_URL =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-small/pipeline/feature-extraction";
+
+const DEFAULT_MODEL = modelsConfig.defaultModel;
+const MODEL_CONFIG = modelsConfig.models as Record<string, {
+  indexHostEnv: string;
+  queryPrefix: string;
+  passagePrefix: string;
+  provider?: string;
+}>;
 
 export interface SearchResult {
   recordId: string;
@@ -19,61 +25,32 @@ export interface SearchResult {
   source: string;
 }
 
-async function embedQuery(query: string): Promise<number[]> {
-  // e5 modely vyžadují prefix "query: " pro vyhledávací dotazy
-  const res = await fetch(HF_MODEL_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${HF_API_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ inputs: `query: ${query}` }),
+async function embedQuery(query: string, modelId: string, queryPrefix: string, provider?: string): Promise<number[]> {
+  const hf = new InferenceClient(HF_API_TOKEN);
+  const result = await hf.featureExtraction({
+    model: modelId,
+    inputs: `${queryPrefix}${query}`,
+    ...(provider ? { provider: provider as import("@huggingface/inference").InferenceProviderOrPolicy } : {}),
   });
 
-  // Číst jako text nejdříve — HF může vrátit HTML při auth chybách
-  const text = await res.text();
-
-  if (res.status === 503) {
-    let estimatedTime = 20;
-    try {
-      const json = JSON.parse(text);
-      estimatedTime = json.estimated_time ?? 20;
-    } catch {}
-    throw Object.assign(new Error("model_loading"), { estimatedTime });
+  // featureExtraction vrací number[] nebo number[][]
+  if (Array.isArray(result)) {
+    return Array.isArray((result as unknown[])[0])
+      ? ((result as number[][])[0])
+      : (result as number[]);
   }
-
-  if (!res.ok) {
-    throw Object.assign(new Error(`hf_error`), {
-      detail: `HuggingFace ${res.status}: ${text.slice(0, 300)}`,
-    });
-  }
-
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw Object.assign(new Error(`hf_error`), {
-      detail: `HuggingFace vrátil neplatný JSON: ${text.slice(0, 200)}`,
-    });
-  }
-
-  // HF Inference vrací [[...384 čísel...]] nebo [...384 čísel...]
-  if (Array.isArray(data)) {
-    return Array.isArray((data as unknown[])[0])
-      ? ((data as number[][])[0])
-      : (data as number[]);
-  }
-  throw Object.assign(new Error(`hf_error`), {
-    detail: `Neočekávaný formát odpovědi: ${JSON.stringify(data).slice(0, 200)}`,
+  throw Object.assign(new Error("hf_error"), {
+    detail: `Neočekávaný formát odpovědi od HuggingFace`,
   });
 }
 
 async function queryPinecone(
   vector: number[],
   topK: number,
+  indexHost: string,
   filter?: Record<string, unknown>
 ): Promise<{ matches: Array<{ score: number; metadata: Record<string, unknown> }> }> {
-  const res = await fetch(`${PINECONE_INDEX_HOST}/query`, {
+  const res = await fetch(`${indexHost}/query`, {
     method: "POST",
     headers: {
       "Api-Key": PINECONE_API_KEY,
@@ -95,6 +72,10 @@ export async function POST(req: NextRequest) {
   const query: string = (body.query ?? "").trim();
   const topK: number = Math.min(Math.max(Number(body.topK) || 10, 1), 100);
   const source: string = (body.source ?? "").trim();
+  const rawModel: string = (body.model ?? "").trim();
+  const modelId = rawModel in MODEL_CONFIG ? rawModel : DEFAULT_MODEL;
+  const cfg = MODEL_CONFIG[modelId];
+  const indexHost = process.env[cfg.indexHostEnv] ?? "";
 
   if (!query) {
     return NextResponse.json({ error: "Prázdný dotaz" }, { status: 400 });
@@ -103,9 +84,9 @@ export async function POST(req: NextRequest) {
   const filter = source ? { source: { "$eq": source } } : undefined;
 
   try {
-    const vector = await embedQuery(query);
+    const vector = await embedQuery(query, modelId, cfg.queryPrefix, cfg.provider);
     // Načteme více výsledků než potřebujeme, abychom měli zásobu po deduplikaci
-    const raw = await queryPinecone(vector, topK * 3, filter);
+    const raw = await queryPinecone(vector, topK * 3, indexHost, filter);
 
     // Deduplikace: ze shodné autority (stejný preferred term) ponecháme
     // pouze nejlépe skórující shodu, ať už šlo o preferred nebo variant.
@@ -151,7 +132,7 @@ export async function POST(req: NextRequest) {
       );
     }
     console.error("[/api/search]", e);
-    const detail = (e as Error & { detail?: string }).detail;
+    const detail = (e as Error & { detail?: string }).detail ?? e.message;
     return NextResponse.json(
       { error: detail ?? "Vyhledávání selhalo" },
       { status: 500 }
