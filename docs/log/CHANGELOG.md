@@ -9,7 +9,22 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 ---
 
-## [Unreleased]
+## [0.2.0] — 2026-05-21
+
+### 2026-05-21
+
+#### Fixed
+- **`bin/download_data.sh`** — přidáno `set -euo pipefail`; selhání wget/gunzip nyní ukončí skript místo tichého pokračování.  
+  Požadavek: výpadek sítě nebo chyba komprese zapisoval poškozený soubor bez varování.  
+  Zdroj: code review
+
+- **`bin/download_data.sh`** — pipeline pro stažení `redirect.txt` zapisuje přes dočasný soubor; přejmenování proběhne jen po úspěchu.  
+  Požadavek: při selhání pipeline se vytvořil prázdný/poškozený `redirect.txt`, který pak existence-check považoval za platný a přeskočil opětovné stažení.  
+  Zdroj: code review
+
+- **`scripts/index_vectors.py`** — načítání `config/models.json` obaleno do `try/except`; chybějící nebo poškozený soubor vypíše čitelnou chybovou hlášku místo Python traceback.  
+  Požadavek: chyba konfigurace se projevila jako nečitelný traceback při importu modulu.  
+  Zdroj: code review
 
 ---
 
@@ -43,6 +58,11 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 - **Příznak `--no-wiki`** pro `scripts/index_vectors.py` — přeskočí Wikipedia data při indexaci.  
   Požadavek: při vývoji a ladění je rychlejší indexovat pouze MARC záznamy.  
   Zdroj: commit `25a9399`
+
+- **Vercel Web Analytics** — `@vercel/analytics`, `src/app/layout.tsx`  
+  Sledování návštěvnosti a page views prostřednictvím Vercel Analytics.  
+  Požadavek: základní přehled o využití aplikace bez nutnosti vlastní infrastruktury.  
+  Zdroj: commity `3896294`, `86d7eb8`
 
 #### Changed
 - **URL parametr dotazu**: z URL fragmentu (`#výraz`) na query param (`?q=výraz`).  

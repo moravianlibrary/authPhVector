@@ -38,9 +38,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 NS = "http://www.loc.gov/MARC21/slim"
 DATA_DIR = Path(__file__).parent.parent
-_models_cfg = json.loads((DATA_DIR / "config" / "models.json").read_text())
-MODEL_CONFIGS: dict[str, dict] = _models_cfg["models"]
-DEFAULT_MODEL: str = _models_cfg["defaultModel"]
+try:
+    _models_cfg = json.loads((DATA_DIR / "config" / "models.json").read_text())
+    MODEL_CONFIGS: dict[str, dict] = _models_cfg["models"]
+    DEFAULT_MODEL: str = _models_cfg["defaultModel"]
+except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+    sys.exit(f"Chyba: nepodařilo se načíst config/models.json: {e}")
 RECORDS_PER_BATCH = 200
 ENCODE_BATCH_SIZE = 64
 AUT_DIR = DATA_DIR / "data" / "aut"

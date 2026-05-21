@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$SCRIPT_DIR/../scripts"
@@ -36,10 +37,11 @@ bash "$SCRIPT_DIR/setup_venv.sh"
 echo "Downloading Wikipedia redirects..."
 REDIRECT_OUT="$DUMP_DIR/redirect.txt"
 if [ ! -f "$REDIRECT_OUT" ]; then
+    REDIRECT_TMP="${REDIRECT_OUT}.tmp"
     wget -q --show-progress \
         "https://dumps.wikimedia.org/cswiki/latest/cswiki-latest-redirect.sql.gz" \
         -O - | gunzip | "$SCRIPTS_DIR/.venv/bin/python" "$SCRIPTS_DIR/parse_redirect_sql.py" \
-        > "$REDIRECT_OUT"
+        > "$REDIRECT_TMP" && mv "$REDIRECT_TMP" "$REDIRECT_OUT"
 else
     echo "  Already exists: redirect.txt"
 fi
