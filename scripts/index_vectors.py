@@ -215,14 +215,22 @@ def index_file(
         batch.append(record)
         if len(batch) >= RECORDS_PER_BATCH:
             vectors = records_to_vectors(batch, model, source, passage_prefix)
-            index.upsert(vectors=vectors)
-            total_vectors += len(vectors)
+            try:
+                index.upsert(vectors=vectors)
+                total_vectors += len(vectors)
+            except Exception as e:
+                logging.error("Upsert selhal pro dávku %d vektorů z %s: %s", len(vectors), xml_path.name, e)
+                raise
             batch = []
 
     if batch:
         vectors = records_to_vectors(batch, model, source, passage_prefix)
-        index.upsert(vectors=vectors)
-        total_vectors += len(vectors)
+        try:
+            index.upsert(vectors=vectors)
+            total_vectors += len(vectors)
+        except Exception as e:
+            logging.error("Upsert selhal pro dávku %d vektorů z %s: %s", len(vectors), xml_path.name, e)
+            raise
 
     return total_vectors
 

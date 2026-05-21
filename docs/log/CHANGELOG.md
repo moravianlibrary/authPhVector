@@ -9,7 +9,7 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 ---
 
-## [0.2.0] — 2026-05-21
+## [0.3.0] — 2026-05-21
 
 ### 2026-05-21
 
@@ -24,6 +24,26 @@ Každý záznam obsahuje: datum, dotčené soubory, popis změny, jaký požadav
 
 - **`scripts/index_vectors.py`** — načítání `config/models.json` obaleno do `try/except`; chybějící nebo poškozený soubor vypíše čitelnou chybovou hlášku místo Python traceback.  
   Požadavek: chyba konfigurace se projevila jako nečitelný traceback při importu modulu.  
+  Zdroj: code review
+
+- **`src/app/api/search/route.ts`** — `embedQuery` zachytí 503 od HuggingFace SDK a přehodí jako sentinel `model_loading`; retry countdown v UI nyní skutečně funguje.  
+  Požadavek: refaktorizace na `InferenceClient` přestala propagovat model-loading stav, retry UI bylo mrtvé.  
+  Zdroj: code review
+
+- **`src/app/api/search/route.ts`** — přidána validace `indexHost`; chybějící env proměnná vrátí srozumitelnou chybu 500 místo cryptického `fetch` pádu.  
+  Požadavek: prázdný `indexHost` způsoboval relativní URL `fetch("/query")` crashující s nečitelnou chybou.  
+  Zdroj: code review
+
+- **`src/app/page.tsx`** — retry timer se ruší na začátku každého volání `doSearch`; eliminuje případ dvou souběžných vyhledávání po přepsání timeru.  
+  Požadavek: zadání dotazu během retry countdown způsobilo po vypršení timeru extra vyhledávání.  
+  Zdroj: code review
+
+- **`src/app/page.tsx`** — tři nezávislé URL sync `useEffect` hooky sloučeny do jednoho se závislostmi `[query, sourceFilter, model]`; eliminuje race condition přepisující URL parametry.  
+  Požadavek: při načtení stránky s URL `?q=&source=&model=` mohly efekty navzájem přepisovat parametry.  
+  Zdroj: code review
+
+- **`scripts/index_vectors.py`** — `index.upsert()` obaleno do `try/except` s logováním; selhání dávky vypíše čitelnou chybu s názvem souboru a počtem vektorů.  
+  Požadavek: selhání upsert (timeout, rate limit) zabíjelo celý run bez indikace, která dávka selhala.  
   Zdroj: code review
 
 ---

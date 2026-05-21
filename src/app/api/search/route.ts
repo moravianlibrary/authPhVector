@@ -27,11 +27,23 @@ export interface SearchResult {
 
 async function embedQuery(query: string, modelId: string, queryPrefix: string, provider?: string): Promise<number[]> {
   const hf = new InferenceClient(HF_API_TOKEN);
-  const result = await hf.featureExtraction({
-    model: modelId,
-    inputs: `${queryPrefix}${query}`,
-    ...(provider ? { provider: provider as import("@huggingface/inference").InferenceProviderOrPolicy } : {}),
-  });
+  let result;
+  try {
+    result = await hf.featureExtraction({
+      model: modelId,
+      inputs: `${queryPrefix}${query}`,
+      ...(provider ? { provider: provider as import("@huggingface/inference").InferenceProviderOrPolicy } : {}),
+    });
+  } catch (err: unknown) {
+    const e = err as Error & { statusCode?: number };
+    if (e.statusCode === 503 || e.message?.toLowerCase().includes("loading")) {
+      const match = e.message?.match(/"estimated_time"\s*:\s*(\d+(?:\.\d+)?)/);
+      throw Object.assign(new Error("model_loading"), {
+        estimatedTime: match ? Math.ceil(parseFloat(match[1])) : 20,
+      });
+    }
+    throw err;
+  }
 
   // featureExtraction vrací number[] nebo number[][]
   if (Array.isArray(result)) {
@@ -76,6 +88,12 @@ export async function POST(req: NextRequest) {
   const modelId = rawModel in MODEL_CONFIG ? rawModel : DEFAULT_MODEL;
   const cfg = MODEL_CONFIG[modelId];
   const indexHost = process.env[cfg.indexHostEnv] ?? "";
+  if (!indexHost) {
+    return NextResponse.json(
+      { error: `Není nastavena proměnná prostředí ${cfg.indexHostEnv}` },
+      { status: 500 }
+    );
+  }
 
   if (!query) {
     return NextResponse.json({ error: "Prázdný dotaz" }, { status: 400 });

@@ -49,6 +49,10 @@ export default function Home() {
   }
 
   const doSearch = useCallback(async (q: string, k: number, src = "", mdl = modelsConfig.defaultModel) => {
+    if (retryTimeout.current) {
+      clearTimeout(retryTimeout.current);
+      retryTimeout.current = null;
+    }
     if (!q.trim()) {
       setResults([]);
       setError(null);
@@ -123,37 +127,15 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Synchronizovat dotaz do URL search param ?q=
+  // Synchronizovat query, source a model do URL — jeden efekt zabraňuje race condition
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (query) {
-      params.set("q", query);
-    } else {
-      params.delete("q");
-    }
-    const search = params.toString() ? `?${params.toString()}` : "";
-    window.history.replaceState(null, "", `${window.location.pathname}${search}`);
-  }, [query]);
-
-  // Synchronizovat source filtr do URL search params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (sourceFilter) {
-      params.set("source", sourceFilter);
-    } else {
-      params.delete("source");
-    }
-    const search = params.toString() ? `?${params.toString()}` : "";
-    window.history.replaceState(null, "", `${window.location.pathname}${search}${window.location.hash}`);
-  }, [sourceFilter]);
-
-  // Synchronizovat model do URL search params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    if (query) { params.set("q", query); } else { params.delete("q"); }
+    if (sourceFilter) { params.set("source", sourceFilter); } else { params.delete("source"); }
     params.set("model", model);
     const search = `?${params.toString()}`;
     window.history.replaceState(null, "", `${window.location.pathname}${search}${window.location.hash}`);
-  }, [model]);
+  }, [query, sourceFilter, model]);
 
   useEffect(() => {
     if (query.trim()) doSearch(query, topK, sourceFilter, model);
