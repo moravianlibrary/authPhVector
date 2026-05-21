@@ -102,28 +102,37 @@ export default function Home() {
 
   // Načíst výraz, filtr a model z URL při prvním otevření stránky
   useEffect(() => {
-    const hash = decodeURIComponent(window.location.hash.slice(1));
     const params = new URLSearchParams(window.location.search);
     const src = params.get("source") ?? "";
     const urlModel = params.get("model") ?? "";
     const initModel = urlModel in MODELS ? urlModel : "intfloat/multilingual-e5-small";
+    const qParam = params.get("q") ?? "";
+    const hash = decodeURIComponent(window.location.hash.slice(1));
+    const initQuery = qParam || hash;
+
     if (src) setSourceFilter(src);
     if (initModel !== "intfloat/multilingual-e5-small") setModel(initModel);
-    if (hash) {
-      setQuery(hash);
-      doSearch(hash, topK, src, initModel);
+    if (initQuery) {
+      setQuery(initQuery);
+      if (!qParam && hash) {
+        params.set("q", hash);
+        window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+      }
+      doSearch(initQuery, topK, src, initModel);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Synchronizovat URL fragment s aktuálním výrazem (zachovat search params)
+  // Synchronizovat dotaz do URL search param ?q=
   useEffect(() => {
-    const search = window.location.search;
+    const params = new URLSearchParams(window.location.search);
     if (query) {
-      window.history.replaceState(null, "", `${search}#${encodeURIComponent(query)}`);
+      params.set("q", query);
     } else {
-      window.history.replaceState(null, "", window.location.pathname + search);
+      params.delete("q");
     }
+    const search = params.toString() ? `?${params.toString()}` : "";
+    window.history.replaceState(null, "", `${window.location.pathname}${search}`);
   }, [query]);
 
   // Synchronizovat source filtr do URL search params
